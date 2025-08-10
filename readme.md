@@ -64,7 +64,7 @@ pip install -r requirements.txt
 
 4. 应用数据库迁移
 按照该配置配置MySQL数据库
-`sudo mysql -u root < ../setup_mysql.sql`
+`sudo mysql -u root < setup_mysql.sql`
 ```json
 DATABASES = {
     'default': {
