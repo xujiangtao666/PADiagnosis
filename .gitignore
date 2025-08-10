@@ -259,5 +259,3 @@ docs/_build/
 *.pyo
 __pycache__/
 
-# Project specific temporary files
-create_doctor_user.py 
