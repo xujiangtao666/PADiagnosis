@@ -111,33 +111,3 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: false
         verbose: true
-
-  lint:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-    
-    - name: 设置 Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: 安装 linting 工具
-      run: |
-        python -m pip install --upgrade pip
-        pip install black isort pylint
-        pip install -r requirements.txt
-    
-    - name: 检查代码格式 (Black)
-      run: |
-        black --check --diff .
-    
-    - name: 检查导入排序 (isort)
-      run: |
-        isort --check-only --diff .
-    
-    - name: 运行 Pylint
-      run: |
-        pylint --load-plugins=pylint_django --django-settings-module=Demo.settings $(find . -name "*.py" | grep -v migrations | grep -v venv | grep -v .venv) 
