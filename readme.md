@@ -64,6 +64,7 @@ pip install -r requirements.txt
 
 4. 应用数据库迁移
 按照该配置配置MySQL数据库
+`sudo mysql -u root < ../setup_mysql.sql`
 ```json
 DATABASES = {
     'default': {
@@ -87,7 +88,7 @@ python manage.py migrate
 
 5. 创建医生用户
 ```
-python create_doctor_user.py 
+python create_user.py
 ```
 
 6. 运行开发服务器
