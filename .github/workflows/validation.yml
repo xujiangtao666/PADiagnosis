@@ -1,0 +1,78 @@
+name: Project Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test
+          MYSQL_USER: django_user
+          MYSQL_PASSWORD: onlyone991114
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libmysqlclient-dev
+
+    - name: Create and activate virtualenv
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install mysqlclient
+
+    - name: Setup MySQL database
+      run: |
+        mysql -h 127.0.0.1 -u root -proot -e "CREATE USER IF NOT EXISTS 'django_user'@'%' IDENTIFIED BY 'onlyone991114';"
+        mysql -h 127.0.0.1 -u root -proot -e "GRANT ALL PRIVILEGES ON test.* TO 'django_user'@'%';"
+        mysql -h 127.0.0.1 -u root -proot -e "FLUSH PRIVILEGES;"
+
+    - name: Run migrations
+      env:
+        DJANGO_SETTINGS_MODULE: Demo.settings
+      run: |
+        python manage.py migrate
+
+    - name: Run tests
+      env:
+        DJANGO_SETTINGS_MODULE: Demo.settings
+      run: |
+        python manage.py test
+
+    - name: Check server startup
+      env:
+        DJANGO_SETTINGS_MODULE: Demo.settings
+      run: |
+        python manage.py runserver &
+        SERVER_PID=$!
+        sleep 5
+        curl --fail http://127.0.0.1:8000/ || exit 1
+        kill $SERVER_PID
