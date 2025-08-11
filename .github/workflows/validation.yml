@@ -19,7 +19,7 @@ jobs:
           MYSQL_PASSWORD: onlyone991114
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot" --health-interval=10s --health-timeout=5s --health-retries=3
       redis:
         image: redis
         ports:
@@ -49,29 +49,62 @@ jobs:
         pip install -r requirements.txt
         pip install mysqlclient
 
+    - name: Wait for MySQL to be ready
+      run: |
+        for i in {1..30}; do
+          if mysqladmin ping -h 127.0.0.1 -u root -proot --silent; then
+            echo "MySQL is ready"
+            break
+          fi
+          echo "Waiting for MySQL... Attempt $i"
+          sleep 2
+        done
+        mysqladmin ping -h 127.0.0.1 -u root -proot || exit 1
+
     - name: Setup MySQL database
       run: |
         mysql -h 127.0.0.1 -u root -proot -e "CREATE USER IF NOT EXISTS 'django_user'@'%' IDENTIFIED BY 'onlyone991114';"
         mysql -h 127.0.0.1 -u root -proot -e "GRANT ALL PRIVILEGES ON test.* TO 'django_user'@'%';"
         mysql -h 127.0.0.1 -u root -proot -e "FLUSH PRIVILEGES;"
 
+    - name: Create temp settings file
+      run: |
+        cat > temp_settings.py <<EOL
+        from Demo.settings import *
+        
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': 'test',
+                'USER': 'django_user',
+                'PASSWORD': 'onlyone991114',
+                'HOST': '127.0.0.1',
+                'PORT': '3306',
+                'OPTIONS': {
+                    'charset': 'utf8mb4',
+                    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
+            }
+        }
+        EOL
+
     - name: Run migrations
       env:
-        DJANGO_SETTINGS_MODULE: Demo.settings
+        DJANGO_SETTINGS_MODULE: temp_settings
       run: |
-        python manage.py migrate
+        python manage.py migrate --noinput
 
     - name: Run tests
       env:
-        DJANGO_SETTINGS_MODULE: Demo.settings
+        DJANGO_SETTINGS_MODULE: temp_settings
       run: |
         python manage.py test
 
     - name: Check server startup
       env:
-        DJANGO_SETTINGS_MODULE: Demo.settings
+        DJANGO_SETTINGS_MODULE: temp_settings
       run: |
-        python manage.py runserver &
+        python manage.py runserver 127.0.0.1:8000 &
         SERVER_PID=$!
         sleep 5
         curl --fail http://127.0.0.1:8000/ || exit 1
