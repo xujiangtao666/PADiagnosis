@@ -3,7 +3,7 @@ from patient_records.models import PatientInfo, Doctor
 
 class DiagResult(models.Model):
     # 新诊断结果表（诊断结果包含多个标签如0123）
-    result_type = models.CharField(max_length=50, verbose_name='诊断结果标签')
+    result_type = models.CharField(max_length=20, verbose_name='诊断结果标签')
 
     patient = models.ForeignKey(PatientInfo, on_delete=models.CASCADE, related_name='diagnosis_results')
 
@@ -103,3 +103,4 @@ class DiagnosisResult(models.Model):
         """返回重度肺炎概率的百分比形式（0-100）"""
 
         return self.probability_severe * 100 
+
