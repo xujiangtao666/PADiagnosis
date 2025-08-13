@@ -1,0 +1,65 @@
+{% extends 'index.html' %}
+{% block content %}
+<div class="container diagnosis-database">
+    <h2>诊断数据库</h2>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">数据统计</h5>
+                    <p class="card-text" id="data-count">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div id="data-stats-chart" style="height: 200px;"></div>
+        </div>
+    </div>
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            <button class="btn btn-primary" id="import-btn"><i class="bi bi-upload"></i> 数据导入</button>
+            <button class="btn btn-success" id="export-btn"><i class="bi bi-download"></i> 数据导出</button>
+        </div>
+        <input type="text" class="form-control w-25" id="search-input" placeholder="搜索...">
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>编号</th>
+                    <th>患者ID</th>
+                    <th>性别</th>
+                    <th>年龄</th>
+                    <th>诊断时间</th>
+                    <th>影像预览</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="database-table-body">
+                <!-- 数据行由JS动态填充 -->
+            </tbody>
+        </table>
+    </div>
+    <!-- 影像预览模态框 -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="imageModalLabel">影像预览</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <img id="preview-image" src="" alt="影像" class="img-fluid">
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 导入文件对话框（隐藏） -->
+    <input type="file" id="import-file-input" accept=".csv,.xlsx" style="display:none;">
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="/static/js/diagnosis_database.js"></script>
+{% endblock %}
+
