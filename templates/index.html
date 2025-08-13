@@ -176,6 +176,10 @@
                     <i class="bi bi-file-earmark-medical"></i>
                     患者管理
                 </a>
+                <a href="{% url 'diagnosis:diagnosis_database' %}" class="nav-link {% if request.path == '/diagnosis/database/' %}active{% endif %}">
+                    <i class="bi bi-database"></i>
+                    诊断数据库
+                </a>
                 <a href="{% url 'diagnosis:home' %}" class="nav-link {% if request.path|slice:'1:10' == 'diagnosis' and 'history' not in request.path and 'result' not in request.path %}active{% endif %}">
                     <i class="bi bi-clipboard2-pulse"></i>
                     肺炎诊断
@@ -309,4 +313,4 @@
     <script src="{% static 'js/main.js' %}"></script>
     {% block page_scripts %}{% endblock %}
 </body>
-</html> 
+</html>

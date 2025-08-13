@@ -20,8 +20,11 @@ urlpatterns = [
     # 诊断历史
     path('history/', views.diagnosis_history, name='diagnosis_history'),
     
+    # 诊断数据库页面
+    path('database/', views.diagnosis_database, name='diagnosis_database'),
+
     # AJAX接口
     path('api/patient-info/<int:patient_id>/', views.get_patient_info, name='patient_info'),
     path('api/diagnose/', views.ajax_diagnose, name='ajax_diagnose'),
     path('api/remote-diagnose/', views.run_remote_diagnosis, name='remote_diagnose'),
-] 
+]
