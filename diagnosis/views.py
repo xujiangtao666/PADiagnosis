@@ -1012,4 +1012,10 @@ def run_remote_diagnosis(request):
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': '无效的JSON数据'}, status=400)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500) 
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+def diagnosis_database(request):
+    """
+    诊断数据库页面视图，仅渲染前端模板
+    """
+    return render(request, 'diagnosis/diagnosis_database.html')
