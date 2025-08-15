@@ -19,6 +19,27 @@ class Doctor(models.Model):
     def __str__(self):
         return self.full_name
 
+
+class PatientInfo(models.Model):
+    """!!!患者医学图像信息表!!!"""
+    
+    patient_id = models.BigAutoField(primary_key=True, verbose_name='患者ID')
+    image_style = models.CharField(max_length=30, verbose_name='医学图像类别')
+    image = models.ImageField(upload_to='ct_images/%Y/%m/%d/', verbose_name='医学图像')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    created_by = models.ForeignKey('Doctor', on_delete=models.CASCADE, verbose_name='创建人')
+
+    
+    class Meta:
+        db_table = 'patient'
+        verbose_name = '患者'
+        verbose_name_plural = '患者'
+        
+    def __str__(self):
+        return f"{self.patient_id} - {self.image_style}"
+
+
 class Patient(models.Model):
     """患者信息表"""
     GENDER_CHOICES = (

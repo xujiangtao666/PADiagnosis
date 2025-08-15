@@ -1,5 +1,39 @@
 from django.db import models
-from patient_records.models import Patient, Doctor
+from patient_records.models import PatientInfo, Doctor
+
+class DiagResult(models.Model):
+    # 新诊断结果表（诊断结果包含多个标签如0123）
+    result_type = models.CharField(max_length=20, verbose_name='诊断结果标签')
+
+    patient = models.ForeignKey(PatientInfo, on_delete=models.CASCADE, related_name='diagnosis_results')
+
+    # 八种病的置信度
+    confidence_0 = models.FloatField(verbose_name='无外伤置信度', default=0.0)
+    confidence_1 = models.FloatField(verbose_name='腹盆腔或腹膜后积血/血肿置信度', default=0.0)
+    confidence_2 = models.FloatField(verbose_name='肝脏损伤置信度', default=0.0)
+    confidence_3 = models.FloatField(verbose_name='脾脏损伤置信度', default=0.0)
+    confidence_4 = models.FloatField(verbose_name='右肾损伤置信度', default=0.0)
+    confidence_5 = models.FloatField(verbose_name='左肾损伤置信度', default=0.0)
+    confidence_6 = models.FloatField(verbose_name='右肾上腺损伤置信度', default=0.0)
+    confidence_7 = models.FloatField(verbose_name='胰腺损伤置信度', default=0.0)
+
+    # 医学图像存储路径
+    image = models.ImageField(upload_to='ct_images/%Y/%m/%d/', verbose_name='CT图像')
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='诊断时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    created_by = models.ForeignKey(Doctor, on_delete=models.CASCADE, verbose_name='创建医生')
+
+    class Meta:
+        verbose_name = '诊断结果'
+        verbose_name_plural = '诊断结果'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient.image_style} - {self.result_type} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
+
+
+
 
 # 诊断结果模型
 class DiagnosisResult(models.Model):
@@ -67,4 +101,6 @@ class DiagnosisResult(models.Model):
     @property
     def severe_probability(self):
         """返回重度肺炎概率的百分比形式（0-100）"""
+
         return self.probability_severe * 100 
+
