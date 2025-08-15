@@ -184,14 +184,14 @@
                     <i class="bi bi-clock-history"></i>
                     历史诊断结果
                 </a>
-                <a href="{% url 'segmentation:segmentation_home' %}" class="nav-link {% if request.path|slice:'1:13' == 'segmentation' and 'history' not in request.path and 'result' not in request.path %}active{% endif %}">
+                <!-- <a href="{% url 'segmentation:segmentation_home' %}" class="nav-link {% if request.path|slice:'1:13' == 'segmentation' and 'history' not in request.path and 'result' not in request.path %}active{% endif %}">
                     <i class="bi bi-grid-3x3"></i>
                     感染区域分割
                 </a>
                 <a href="{% url 'segmentation:segmentation_history' %}" class="nav-link {% if 'segmentation/history' in request.path or 'segmentation/result' in request.path %}active{% endif %}">
                     <i class="bi bi-clock-history"></i>
                     历史分割结果
-                </a>
+                </a> -->
             </div>
         </nav>
         <div class="mt-auto text-center text-muted py-3 small sidebar-footer">

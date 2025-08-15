@@ -3,7 +3,7 @@
 {% load custom_filters %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">患者管理</li>
+<li class="breadcrumb-item active" aria-current="page">患者医学图像管理</li>
 {% endblock %}
 
 {% block page_css %}
@@ -114,9 +114,9 @@
 <div class="container-fluid">
     <!-- 页面标题和操作按钮 -->
     <div class="d-flex justify-content-between align-items-center page-header">
-        <h2 class="page-title">患者管理</h2>
+        <h2 class="page-title">患者医学图像管理</h2>
         <a href="{% url 'patient_records:patient_add' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i> 新增患者
+            <i class="bi bi-plus-circle me-2"></i> 新增患者图像
         </a>
     </div>
 
@@ -127,19 +127,11 @@
         </div>
         <div class="card-body">
             <form method="get" class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label for="search_id" class="form-label">患者ID</label>
                     <input type="text" class="form-control" id="search_id" name="search_id" placeholder="输入患者ID" value="{{ search_id|default:'' }}">
                 </div>
-                <div class="col-md-3">
-                    <label for="search_name" class="form-label">姓名</label>
-                    <input type="text" class="form-control" id="search_name" name="search_name" placeholder="输入患者姓名" value="{{ search_name|default:'' }}">
-                </div>
-                <div class="col-md-3">
-                    <label for="search_contact" class="form-label">联系方式</label>
-                    <input type="text" class="form-control" id="search_contact" name="search_contact" placeholder="输入联系方式" value="{{ search_contact|default:'' }}">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-6 d-flex align-items-end">
                     <div class="d-grid gap-2 w-100">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-search me-1"></i> 搜索
@@ -153,10 +145,10 @@
         </div>
     </div>
 
-    <!-- 病历列表 -->
+    <!-- 患者医学图像列表 -->
     <div class="card table-card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-list-ul me-2"></i> 患者列表</span>
+            <span><i class="bi bi-list-ul me-2"></i> 患者医学图像列表</span>
             <span class="badge bg-info">共 {{ patients|length }} 条记录</span>
         </div>
         <div class="card-body table-responsive">
@@ -164,12 +156,10 @@
                 <thead>
                     <tr>
                         <th>患者ID</th>
-                        <th>姓名</th>
-                        <th>性别</th>
-                        <th>年龄</th>
-                        <th>联系方式</th>
-                        <th>体温</th>
-                        <th>基础疾病</th>
+                        <th>图像类别</th>
+                        <th>图像预览</th>
+                        <th>创建时间</th>
+                        <th>创建医生</th>
                         <th width="150">操作</th>
                     </tr>
                 </thead>
@@ -178,26 +168,18 @@
                     {% for patient in patients %}
                     <tr>
                         <td><span class="badge bg-light text-dark">{{ patient.patient_id }}</span></td>
-                        <td>{{ patient.name }}</td>
-                        <td>{{ patient.get_gender_display }}</td>
                         <td>
-                            {% if patient.clinical_features %}
-                                {{ patient.clinical_features.age }}岁
+                            <span class="badge bg-primary">{{ patient.image_style }}</span>
+                        </td>
+                        <td>
+                            {% if patient.image %}
+                                <img src="{{ patient.image.url }}" alt="医学图像" class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
                             {% else %}
-                                {{ patient.get_age }}岁
+                                <span class="text-muted">无图像</span>
                             {% endif %}
                         </td>
-                        <td>{{ patient.phone|default:"未填写" }}</td>
-                        <td>
-                            {% if patient.clinical_features %}
-                            {% with cf=patient.clinical_features %}
-                                <span class="status-badge {{ cf.body_temperature|temp_status }}">{{ cf.body_temperature }}°C</span>
-                            {% endwith %}
-                            {% else %}
-                            <span class="text-muted">未记录</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ patient.clinical_features.underlying_diseases|default:"无" }}</td>
+                        <td>{{ patient.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ patient.created_by.full_name }}</td>
                         <td>
                             <div class="action-btns">
                                 <a href="{% url 'patient_records:patient_detail' patient.patient_id %}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" title="查看详情">
@@ -215,10 +197,10 @@
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="6" class="text-center py-4">
                             <div class="empty-state">
                                 <i class="bi bi-inbox-fill"></i>
-                                <p>暂无病历记录</p>
+                                <p>暂无患者医学图像记录</p>
                             </div>
                         </td>
                     </tr>
@@ -257,7 +239,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>确定要删除这条病历记录吗？此操作不可恢复。</p>
+                <p>确定要删除这条患者医学图像记录吗？此操作不可恢复。</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -272,7 +254,7 @@
     <i class="bi bi-check-circle"></i>
     <div>
         <h6 class="mb-0">操作成功</h6>
-        <p class="mb-0 small">病历记录已删除</p>
+        <p class="mb-0 small">患者医学图像记录已删除</p>
     </div>
     <button class="close-btn"><i class="bi bi-x"></i></button>
 </div>

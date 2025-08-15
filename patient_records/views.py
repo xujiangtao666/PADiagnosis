@@ -157,31 +157,22 @@ def login_required_custom(view_func):
 def patient_list(request):
     # 获取搜索参数
     search_id = request.GET.get('search_id', '')
-    search_name = request.GET.get('search_name', '')
-    search_contact = request.GET.get('search_contact', '')
     
-    # 初始查询
-    patients = Patient.objects.all()
+    # 初始查询 - 改为查询PatientInfo表
+    from patient_records.models import PatientInfo
+    patients = PatientInfo.objects.all()
     
     # 应用搜索过滤
     if search_id:
         patients = patients.filter(patient_id=search_id)
     
-    if search_name:
-        patients = patients.filter(name__icontains=search_name)
-    
-    if search_contact:
-        patients = patients.filter(phone__icontains=search_contact)
-    
     # 按创建时间排序
     patients = patients.order_by('-created_at')
     
     return render(request, 'patient_records/patient_list.html', {
-        'title': '病历列表', 
+        'title': '患者医学图像管理', 
         'patients': patients,
-        'search_id': search_id,
-        'search_name': search_name,
-        'search_contact': search_contact
+        'search_id': search_id
     })
 
 # 新增病历
