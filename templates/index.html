@@ -163,7 +163,7 @@
                     <i class="bi bi-lungs-fill"></i>
                     <i class="bi bi-heart-pulse position-absolute" style="font-size: 0.7rem; bottom: 0; right: -5px; color: #41B883;"></i>
                 </div>
-                肺炎诊断系统
+                盆腹腔诊断系统
             </a>
         </div>
         <nav class="mt-4">
@@ -174,15 +174,11 @@
                 </a>
                 <a href="{% url 'patient_records:patient_list' %}" class="nav-link {% if request.path|slice:'1:16' == 'patient-records' %}active{% endif %}">
                     <i class="bi bi-file-earmark-medical"></i>
-                    患者管理
-                </a>
-                <a href="{% url 'diagnosis:diagnosis_database' %}" class="nav-link {% if request.path == '/diagnosis/database/' %}active{% endif %}">
-                    <i class="bi bi-database"></i>
-                    诊断数据库
-                </a>
+                    数据库管理
+                </a> 
                 <a href="{% url 'diagnosis:home' %}" class="nav-link {% if request.path|slice:'1:10' == 'diagnosis' and 'history' not in request.path and 'result' not in request.path %}active{% endif %}">
                     <i class="bi bi-clipboard2-pulse"></i>
-                    肺炎诊断
+                    盆腹腔诊断
                 </a>
                 <a href="{% url 'diagnosis:diagnosis_history' %}" class="nav-link {% if 'diagnosis/history' in request.path or 'diagnosis/result' in request.path %}active{% endif %}">
                     <i class="bi bi-clock-history"></i>
@@ -255,22 +251,22 @@
                                 <div class="feature-icon">
                                     <i class="bi bi-file-earmark-medical"></i>
                                 </div>
-                                <h3>病历管理</h3>
+                                <h3>数据库管理</h3>
                                 <p>管理患者基本信息、临床特征及就诊记录，提供完整的病历追踪与查询功能</p>
                                 <a href="{% url 'patient_records:patient_list' %}" class="btn btn-outline-primary">
                                     <i class="bi bi-arrow-right me-1"></i> 进入管理
                                 </a>
                             </div>
                         </div>
-                    </div>
+                    </div> 
                     <div class="col-md-4 mb-4">
                         <div class="feature-card fade-in-up delay-2">
                             <div class="card-body">
                                 <div class="feature-icon">
                                     <i class="bi bi-clipboard2-pulse"></i>
                                 </div>
-                                <h3>肺炎诊断</h3>
-                                <p>上传CT图像，结合临床特征，利用AI技术进行智能肺炎诊断与严重程度分析</p>
+                                <h3>盆腹腔诊断</h3>
+                                <p>上传CT图像，结合临床特征，利用AI技术进行智能盆腹腔诊断与严重程度分析</p>
                                 <a href="{% url 'diagnosis:home' %}" class="btn btn-outline-primary">
                                     <i class="bi bi-arrow-right me-1"></i> 开始诊断
                                 </a>
@@ -298,7 +294,7 @@
         
         <!-- 页脚 -->
         <footer class="mt-4 mb-2 text-center text-muted small">
-            <p>© 2025 肺炎诊断系统 | 所有权利保留</p>
+            <p>© 2025 盆腹腔诊断系统 | 所有权利保留</p>
         </footer>
     </div>
 
@@ -313,4 +309,4 @@
     <script src="{% static 'js/main.js' %}"></script>
     {% block page_scripts %}{% endblock %}
 </body>
-</html>
+</html> 
