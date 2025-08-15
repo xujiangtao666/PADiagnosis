@@ -5,7 +5,7 @@
 {% block title %}肺炎诊断 - AIRAD肺炎诊断系统{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">肺炎诊断</li>
+<li class="breadcrumb-item active" aria-current="page">盆腹腔诊断</li>
 {% endblock %}
 
 {% block page_css %}
@@ -107,10 +107,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div class="page-title-wrapper">
             <h2 class="page-title mb-0 position-relative">
-                <i class="bi bi-clipboard2-pulse me-2"></i> 肺炎诊断
+                <i class="bi bi-clipboard2-pulse me-2"></i> 盆腹腔诊断
                 <span class="position-absolute" style="bottom: -8px; left: 32px; height: 3px; width: 40px; background: linear-gradient(to right, var(--el-color-primary), transparent);"></span>
             </h2>
-            <p class="text-muted mt-2 mb-0">通过AI分析CT图像和临床特征，辅助进行肺炎诊断</p>
+            <p class="text-muted mt-2 mb-0">通过AI分析超声图像和临床特征，辅助进行盆腹腔诊断</p>
         </div>
         <div>
             <!-- 移除了诊断历史按钮 -->
@@ -123,7 +123,7 @@
             <span><i class="bi bi-info-circle me-2"></i> 功能说明</span>
         </div>
         <div class="card-body">
-            <p>肺炎诊断系统通过分析患者的CT图像数据，结合临床特征，辅助医生进行肺炎的识别、分类与严重程度评估。诊断结果分为三类：无肺炎、轻度肺炎和重度肺炎。</p>
+            <p>盆腹腔诊断系统通过分析患者的超声图像数据，结合临床特征，辅助医生进行盆腹腔损伤的识别、分类与严重程度评估。诊断结果包含7种损伤：无外伤、腹盆腔或腹膜后积血/血肿、肝脏损伤、右肾损伤、左肾损伤、右肾上腺损伤、胰腺损伤。</p>
             
             <div class="row mt-4" >
                 <div class="col-md-4">
@@ -144,8 +144,8 @@
                             <i class="bi bi-cloud-upload" style="font-size: 24px;"></i>
                         </div>
                         <div>
-                            <h5>上传CT图像</h5>
-                            <p class="mb-0">上传患者的CT图像，配合临床特征</p>
+                            <h5>上传US图像</h5>
+                            <p class="mb-0">上传患者的超声图像，配合临床特征</p>
                         </div>
                     </div>
                 </div>
@@ -157,7 +157,7 @@
                         </div>
                         <div>
                             <h5>获取诊断结果</h5>
-                            <p class="mb-0">系统分析后得出肺炎诊断结果</p>
+                            <p class="mb-0">系统分析后得出盆腹腔诊断结果</p>
                         </div>
                     </div>
                 </div>
@@ -169,6 +169,15 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="bi bi-search me-2"></i> 搜索患者</span>
+            <!-- 新增浏览按钮（样式可根据需求调整） -->
+    <button type="button" class="btn btn-outline-secondary" onclick="openPatientList()">
+        浏览
+    </button>
+            {% comment %} <script>
+                function openPatientList() {
+                    window.location.href = "{% url 'diagnosis:patient_list' %}";
+                }
+            </script> {% endcomment %}
         </div>
         <div class="card-body"  style="border-radius: 10px;box-shadow: 0 2px 4px #e2e1e1;">
             <form method="get" class="row g-3">
@@ -179,7 +188,7 @@
                         <input type="text" class="form-control" id="search_id" name="search_id" placeholder="输入患者ID" value="{{ search_id|default:'' }}">
                     </div>
                 </div>
-                <div class="col-md-3">
+                {% comment %} <div class="col-md-3">
                     <label for="search_name" class="form-label">姓名</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-person"></i></span>
@@ -192,7 +201,7 @@
                         <span class="input-group-text"><i class="bi bi-calendar"></i></span>
                         <input type="date" class="form-control" id="search_date" name="search_date" value="{{ search_date|default:'' }}">
                     </div>
-                </div>
+                </div> {% endcomment %}
                 <div class="col-md-3 d-flex align-items-end">
                     <div class="d-grid gap-2 w-100">
                         <button type="submit" class="btn btn-primary">

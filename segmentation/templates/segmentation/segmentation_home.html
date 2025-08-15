@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">感染区域分割</li>
+<li class="breadcrumb-item active" aria-current="page">损伤区域分割</li>
 {% endblock %}
 
 {% block content %}
@@ -87,7 +87,7 @@
     <!-- 页面标题 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="page-title">
-            <i class="bi bi-grid-3x3 me-2"></i> 感染区域分割
+            <i class="bi bi-grid-3x3 me-2"></i> 损伤区域分割
         </h2>
     </div>
     
@@ -97,7 +97,7 @@
             <span><i class="bi bi-info-circle me-2"></i> 功能介绍</span>
         </div>
         <div class="card-body" style="border-radius: 15px;box-shadow: -1px 2px 4px rgba(0, 0, 0, 0.05);">
-            <p>肺炎感染区域分割系统可以帮助医生快速分析X光图像，自动识别并标记可能的感染区域，辅助临床诊断与治疗决策。该功能仅适用于被诊断为<b>重度肺炎</b>的患者。</p>
+            <p>盆腹腔损伤区域分割系统可以帮助医生快速分析CT或MRI图像，自动识别并标记可能的损伤区域，辅助临床诊断与治疗决策。该功能仅适用于被诊断为<b>腹盆腔或腹膜后积血/血肿</b>和<b>器官损伤</b>的患者。</p>
             <div class="row mt-4">
                 <div class="col-md-4">
                     <div class="d-flex">
@@ -106,7 +106,7 @@
                         </div>
                         <div>
                             <h5>选择患者</h5>
-                            <p class="mb-0">从重度肺炎患者列表中选择需要分割分析的患者</p>
+                            <p class="mb-0">从腹盆腔损伤患者列表中选择需要分割分析的患者</p>
                         </div>
                     </div>
                 </div>
@@ -116,8 +116,8 @@
                             <i class="bi bi-cloud-upload"></i>
                         </div>
                         <div>
-                            <h5>X光图像上传</h5>
-                            <p class="mb-0">上传患者的X光图像，输入医生的分割提示</p>
+                            <h5>超声图像上传</h5>
+                            <p class="mb-0">上传患者的超声图像，输入医生的分割提示</p>
                         </div>
                     </div>
                 </div>
@@ -128,7 +128,7 @@
                         </div>
                         <div>
                             <h5>查看分割结果</h5>
-                            <p class="mb-0">系统自动标记感染区域，生成分割结果</p>
+                            <p class="mb-0">系统自动标记损伤区域，生成分割结果</p>
                         </div>
                     </div>
                 </div>
@@ -139,7 +139,7 @@
     <!-- 搜索区域 -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-search me-2"></i> 搜索重度肺炎患者</span>
+            <span><i class="bi bi-search me-2"></i> 搜索盆腹腔损伤患者</span>
         </div>
         <div class="card-body" style="border-radius: 15px;box-shadow: -1px 2px 4px rgba(0, 0, 0, 0.05);">
             <form method="get" class="row g-3">
@@ -147,14 +147,14 @@
                     <label for="search_id" class="form-label">患者ID</label>
                     <input type="text" class="form-control" id="search_id" name="search_id" placeholder="输入患者ID">
                 </div>
-                <div class="col-md-3">
+                {% comment %} <div class="col-md-3">
                     <label for="search_name" class="form-label">姓名</label>
                     <input type="text" class="form-control" id="search_name" name="search_name" placeholder="输入患者姓名">
-                </div>
-                <div class="col-md-3">
+                </div> {% endcomment %}
+                {% comment %} <div class="col-md-3">
                     <label for="search_date" class="form-label">诊断日期</label>
                     <input type="date" class="form-control" id="search_date" name="search_date">
-                </div>
+                </div> {% endcomment %}
                 <div class="col-md-3 d-flex align-items-end">
                     <div class="d-grid gap-2 w-100">
                         <button type="submit" class="btn btn-primary">
@@ -169,7 +169,7 @@
     <!-- 患者列表卡片 -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-people me-2"></i> 重度肺炎患者</span>
+            <span><i class="bi bi-people me-2"></i> 盆腹腔损伤患者</span>
             <span class="badge bg-info">共 {{ patients_count }} 位患者</span>
         </div>
         <div class="card-body">
@@ -191,7 +191,7 @@
                                     <p class="mb-1"><strong>联系方式:</strong> {{ diagnosis.patient.phone|default:"未提供" }}</p>
                                 </div>
                                 <a href="{% url 'segmentation:upload_xray_with_patient' patient_id=diagnosis.patient.patient_id %}" class="btn btn-primary w-100" style="border-radius: 10px;">
-                                    <i class="bi bi-grid-3x3 me-1"></i> 感染区域分割
+                                    <i class="bi bi-grid-3x3 me-1"></i> 损伤区域分割
                                 </a>
                             </div>
                         </div>

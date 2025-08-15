@@ -48,7 +48,13 @@
         border-left: 3px solid #41B883;
     }
     
-    .stat-card.mild {
+    .stat-card.mild_light {
+        background-color: #e8e9c1ff;
+        color: #929700ff;
+        border-left: 3px solid #e6de3cff;
+    }
+
+    .stat-card.mild_heavy {
         background-color: #fff7e6;
         color: #976600;
         border-left: 3px solid #E6A23C;
@@ -185,9 +191,10 @@
                         <label class="form-label"><i class="bi bi-filter me-1"></i> 诊断结果筛选</label>
                         <select class="form-select" name="result_type">
                             <option value="">全部结果</option>
-                            <option value="Normal" {% if result_type == 'Normal' %}selected{% endif %}>无肺炎</option>
-                            <option value="Mild" {% if result_type == 'Mild' %}selected{% endif %}>轻度肺炎</option>
-                            <option value="Severe" {% if result_type == 'Severe' %}selected{% endif %}>重度肺炎</option>
+                            <option value="Normal" {% if result_type == 'Normal' %}selected{% endif %}>无外伤</option>
+                            <option value="mild_light" {% if result_type == 'Mild_light' %}selected{% endif %}>积血或血肿</option>
+                            <option value="mild_heavy" {% if result_type == 'Mild_heavy' %}selected{% endif %}>单一器官损伤</option>
+                            <option value="Severe" {% if result_type == 'Severe' %}selected{% endif %}>多器官损伤</option>
                         </select>
                     </div>
                 </div>
@@ -228,15 +235,23 @@
             <div class="card stat-card normal">
                 <div class="card-body py-1 text-center">
                     <h5 class="mb-0">{{ normal_count }}</h5>
-                    <div class="small">无肺炎</div>
+                    <div class="small">无外伤</div>
                 </div>
             </div>
         </div>
         <div class="col-md-2 mx-2">
-            <div class="card stat-card mild">
+            <div class="card stat-card mild_light">
                 <div class="card-body py-1 text-center">
                     <h5 class="mb-0">{{ mild_count }}</h5>
-                    <div class="small">轻度</div>
+                    <div class="small">积血或血肿</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mx-2">
+            <div class="card stat-card mild_heavy">
+                <div class="card-body py-1 text-center">
+                    <h5 class="mb-0">{{ severe_count }}</h5>
+                    <div class="small">单一器官损伤</div>
                 </div>
             </div>
         </div>
@@ -244,7 +259,7 @@
             <div class="card stat-card severe">
                 <div class="card-body py-1 text-center">
                     <h5 class="mb-0">{{ severe_count }}</h5>
-                    <div class="small">重度</div>
+                    <div class="small">多器官损伤</div>
                 </div>
             </div>
         </div>
@@ -288,13 +303,16 @@
                         </td>
                         <td>
                             {% if diagnosis.result_type == 'Normal' %}
-                            <div class="badge bg-success">无肺炎</div>
+                            <div class="badge bg-success">无外伤</div>
                             <div class="small text-muted mt-1">置信度: {{ diagnosis.get_confidence_percentage }}</div>
-                            {% elif diagnosis.result_type == 'Mild' %}
-                            <div class="badge bg-warning">轻度肺炎</div>
+                            {% elif diagnosis.result_type == 'Mild_light' %}
+                            <div class="badge bg-warning">积血或血肿</div>
+                            <div class="small text-muted mt-1">置信度: {{ diagnosis.get_confidence_percentage }}</div>
+                            {% elif diagnosis.result_type == 'Mild_heavy' %}
+                            <div class="badge bg-warning">单一器官损伤</div>
                             <div class="small text-muted mt-1">置信度: {{ diagnosis.get_confidence_percentage }}</div>
                             {% elif diagnosis.result_type == 'Severe' %}
-                            <div class="badge bg-danger">重度肺炎</div>
+                            <div class="badge bg-danger">多器官损伤</div>
                             <div class="small text-muted mt-1">置信度: {{ diagnosis.get_confidence_percentage }}</div>
                             {% else %}
                             <div class="badge bg-secondary">未知</div>
