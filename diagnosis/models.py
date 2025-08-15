@@ -5,7 +5,7 @@ class DiagResult(models.Model):
     # 新诊断结果表（诊断结果包含多个标签如0123）
     result_type = models.CharField(max_length=20, verbose_name='诊断结果标签')
 
-    patient = models.ForeignKey(PatientInfo, on_delete=models.CASCADE, related_name='diagnosis_results')
+    patient = models.ForeignKey(PatientInfo, on_delete=models.CASCADE, related_name='diag_results')
 
     # 八种病的置信度
     confidence_0 = models.FloatField(verbose_name='无外伤置信度', default=0.0)
@@ -43,7 +43,7 @@ class DiagnosisResult(models.Model):
         ('Severe', '重度肺炎'),
     ]
     
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='diagnosis_results')
+    patient = models.ForeignKey(PatientInfo, on_delete=models.CASCADE, related_name='pneumonia_diagnosis_results')
     result_type = models.CharField(max_length=20, choices=RESULT_TYPES, verbose_name='诊断结果')
     confidence = models.FloatField(verbose_name='置信度') # 保留置信度字段用于兼容性
     

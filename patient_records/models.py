@@ -32,9 +32,9 @@ class PatientInfo(models.Model):
 
     
     class Meta:
-        db_table = 'patient'
-        verbose_name = '患者'
-        verbose_name_plural = '患者'
+        db_table = 'patient_image_info'
+        verbose_name = '患者医学图像信息'
+        verbose_name_plural = '患者医学图像信息'
         
     def __str__(self):
         return f"{self.patient_id} - {self.image_style}"
@@ -60,9 +60,9 @@ class Patient(models.Model):
     created_by = models.ForeignKey(Doctor, on_delete=models.CASCADE, verbose_name='创建人')
     
     class Meta:
-        db_table = 'patient'
-        verbose_name = '患者'
-        verbose_name_plural = '患者'
+        db_table = 'patient_basic_info'
+        verbose_name = '患者基本信息'
+        verbose_name_plural = '患者基本信息'
         
     def __str__(self):
         return f"{self.patient_id} - {self.name}"
