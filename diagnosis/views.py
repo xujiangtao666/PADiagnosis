@@ -1,3 +1,8 @@
+# 超声影像可视化页面
+def ultrasound_viewer(request):
+    file = request.GET.get('file', '')
+    # 仅传递file参数到模板，实际安全性可根据需求加强
+    return render(request, 'diagnosis/ultrasound_viewer.html', {'file': file})
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse

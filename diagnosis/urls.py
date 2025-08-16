@@ -27,4 +27,7 @@ urlpatterns = [
     path('api/patient-info/<int:patient_id>/', views.get_patient_info, name='patient_info'),
     path('api/diagnose/', views.ajax_diagnose, name='ajax_diagnose'),
     path('api/remote-diagnose/', views.run_remote_diagnosis, name='remote_diagnose'),
+
+    # 超声影像可视化页面
+    path('ultrasound_viewer/', views.ultrasound_viewer, name='ultrasound_viewer'),
 ]
