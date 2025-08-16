@@ -1,65 +1,160 @@
 {% extends 'index.html' %}
+{% load static %}
+
+{% block page_css %}
+<link href="{% static 'css/diagnosis_database.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'home' %}">首页</a></li>
+<li class="breadcrumb-item active" aria-current="page">诊断数据库</li>
+{% endblock %}
+
 {% block content %}
-<div class="container diagnosis-database">
-    <h2>诊断数据库</h2>
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <div class="card text-center">
+<div class="container-fluid diagnosis-database-page py-4">
+    <!-- 数据统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">数据统计</h5>
-                    <p class="card-text" id="data-count">--</p>
+                    <div class="display-6"><i class="bi bi-people"></i></div>
+                    <h5 class="card-title">病例总数</h5>
+                    <p class="card-text" id="total-cases">--</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-9">
-            <div id="data-stats-chart" style="height: 200px;"></div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <div class="display-6"><i class="bi bi-image"></i></div>
+                    <h5 class="card-title">影像数量</h5>
+                    <p class="card-text" id="total-images">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <div class="display-6"><i class="bi bi-bar-chart"></i></div>
+                    <h5 class="card-title">诊断类别</h5>
+                    <p class="card-text" id="category-count">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <div class="display-6"><i class="bi bi-calendar-check"></i></div>
+                    <h5 class="card-title">最新数据</h5>
+                    <p class="card-text" id="latest-date">--</p>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div>
-            <button class="btn btn-primary" id="import-btn"><i class="bi bi-upload"></i> 数据导入</button>
-            <button class="btn btn-success" id="export-btn"><i class="bi bi-download"></i> 数据导出</button>
+
+    <!-- 数据可视化区 -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-header">病例趋势</div>
+                <div class="card-body">
+                    <div id="case-trend-chart" style="height: 300px;"></div>
+                </div>
+            </div>
         </div>
-        <input type="text" class="form-control w-25" id="search-input" placeholder="搜索...">
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-header">类别分布</div>
+                <div class="card-body">
+                    <div id="category-pie-chart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th>编号</th>
-                    <th>患者ID</th>
-                    <th>性别</th>
-                    <th>年龄</th>
-                    <th>诊断时间</th>
-                    <th>影像预览</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="database-table-body">
-                <!-- 数据行由JS动态填充 -->
-            </tbody>
-        </table>
+
+    <!-- 数据表格区 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>去隐私化病例数据</span>
+            <div>
+                <button class="btn btn-outline-success btn-sm me-2" id="import-btn"><i class="bi bi-upload"></i> 导入</button>
+                <button class="btn btn-outline-primary btn-sm" id="export-btn"><i class="bi bi-download"></i> 导出</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle" id="database-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>病例ID</th>
+                            <th>性别</th>
+                            <th>年龄</th>
+                            <th>诊断类别</th>
+                            <th>影像数量</th>
+                            <th>诊断时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 数据通过JS动态填充 -->
+                        <!-- 模拟超声病例数据 -->
+                        <tr>
+                            <td>US001</td>
+                            <td>男</td>
+                            <td>45</td>
+                            <td>超声-肺炎</td>
+                            <td>1</td>
+                            <td>2025-08-01</td>
+                            <td><button class="btn btn-outline-info btn-sm view-ultrasound-btn" data-file="1.nii.gz"><i class="bi bi-eye"></i> 查看超声</button></td>
+                        </tr>
+                        <tr>
+                            <td>US002</td>
+                            <td>女</td>
+                            <td>38</td>
+                            <td>超声-正常</td>
+                            <td>1</td>
+                            <td>2025-08-02</td>
+                            <td><button class="btn btn-outline-info btn-sm view-ultrasound-btn" data-file="10.nii.gz"><i class="bi bi-eye"></i> 查看超声</button></td>
+                        </tr>
+                        <tr>
+                            <td>US003</td>
+                            <td>男</td>
+                            <td>52</td>
+                            <td>超声-疑似</td>
+                            <td>1</td>
+                            <td>2025-08-03</td>
+                            <td><button class="btn btn-outline-info btn-sm view-ultrasound-btn" data-file="117.nii.gz"><i class="bi bi-eye"></i> 查看超声</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <!-- 影像预览模态框 -->
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
+
+    <!-- 导入弹窗 -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="imageModalLabel">影像预览</h5>
+            <h5 class="modal-title" id="importModalLabel">导入数据</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body text-center">
-            <img id="preview-image" src="" alt="影像" class="img-fluid">
+          <div class="modal-body">
+            <form id="import-form">
+              <div class="mb-3">
+                <label for="import-file" class="form-label">选择Excel/CSV文件</label>
+                <input class="form-control" type="file" id="import-file" accept=".csv,.xlsx,.xls">
+              </div>
+              <button type="submit" class="btn btn-primary">上传</button>
+            </form>
           </div>
         </div>
       </div>
     </div>
-    <!-- 导入文件对话框（隐藏） -->
-    <input type="file" id="import-file-input" accept=".csv,.xlsx" style="display:none;">
 </div>
 {% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-<script src="/static/js/diagnosis_database.js"></script>
-{% endblock %}
 
+{% block page_scripts %}
+<script src="{% static 'js/echarts.min.js' %}"></script>
+<script src="{% static 'js/diagnosis_database.js' %}"></script>
+{% endblock %}

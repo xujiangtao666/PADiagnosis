@@ -1,0 +1,29 @@
+/* diagnosis_database.css */
+.diagnosis-database-page .card {
+    border-radius: 12px;
+}
+.diagnosis-database-page .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.diagnosis-database-page .display-6 {
+    font-size: 2.2rem;
+    color: #2B5DE0;
+    margin-bottom: 0.5rem;
+}
+.diagnosis-database-page .table th, .diagnosis-database-page .table td {
+    vertical-align: middle;
+}
+.diagnosis-database-page .btn {
+    border-radius: 50px;
+    padding: 0.3rem 1.1rem;
+}
+.diagnosis-database-page .modal-content {
+    border-radius: 10px;
+}
+.diagnosis-database-page .modal-title {
+    font-weight: 600;
+}
+.diagnosis-database-page .table-responsive {
+    min-height: 200px;
+}
