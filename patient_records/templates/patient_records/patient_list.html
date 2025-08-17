@@ -115,7 +115,7 @@
     <!-- 页面标题和操作按钮 -->
     <div class="d-flex justify-content-between align-items-center page-header">
         <h2 class="page-title">患者医学图像管理</h2>
-        <a href="{% url 'patient_records:patient_add' %}" class="btn btn-primary">
+        <a href="{% url 'diagnosis:upload_patient_images' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-2"></i> 新增患者图像
         </a>
     </div>
@@ -173,7 +173,9 @@
                         </td>
                         <td>
                             {% if patient.image %}
-                                <img src="{{ patient.image.url }}" alt="医学图像" class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
+                                <a href="{% url 'patient_records:ultrasound_viewer' patient.pk %}" class="btn btn-outline-info btn-sm" data-bs-toggle="tooltip" title="查看影像">
+                                    <i class="bi bi-eye"></i> 查看影像
+                                </a>
                             {% else %}
                                 <span class="text-muted">无图像</span>
                             {% endif %}

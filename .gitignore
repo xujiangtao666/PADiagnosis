@@ -259,3 +259,6 @@ docs/_build/
 *.pyo
 __pycache__/
 
+# data
+*.nii.gz
+*.nii

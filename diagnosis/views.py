@@ -1,8 +1,4 @@
-# 超声影像可视化页面
-def ultrasound_viewer(request):
-    file = request.GET.get('file', '')
-    # 仅传递file参数到模板，实际安全性可根据需求加强
-    return render(request, 'diagnosis/ultrasound_viewer.html', {'file': file})
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
@@ -71,56 +67,73 @@ def wait_for_remote_result(patient_id, timeout=60, polling_interval=1):
 def diagnosis_home(request):
     # 获取搜索参数
     search_id = request.GET.get('search_id', '')
-    search_name = request.GET.get('search_name', '')
+    search_image_type = request.GET.get('search_image_type', '')
     search_date = request.GET.get('search_date', '')
     
-    # 初始查询：获取所有患者
-    patients = Patient.objects.all()
+    # 初始查询：获取所有患者图像记录
+    from patient_records.models import PatientInfo
+    patient_images = PatientInfo.objects.all()
     
     # 应用搜索过滤
     if search_id:
-        patients = patients.filter(patient_id=search_id)
+        patient_images = patient_images.filter(patient_id=search_id)
     
-    if search_name:
-        patients = patients.filter(name__icontains=search_name)
+    if search_image_type:
+        patient_images = patient_images.filter(image_style__icontains=search_image_type)
     
     if search_date:
         # 按创建日期过滤
         try:
             from datetime import datetime
             search_date_obj = datetime.strptime(search_date, '%Y-%m-%d').date()
-            patients = patients.filter(created_at__date=search_date_obj)
+            patient_images = patient_images.filter(created_at__date=search_date_obj)
         except (ValueError, TypeError):
             # 如果日期格式不正确，忽略该过滤条件
             pass
     
-    # 按创建时间倒序排序，并限制最多显示10条记录
-    patients = patients.order_by('-created_at')[:10]
+    # 按创建时间倒序排序，并限制最多显示20条记录
+    patient_images = patient_images.order_by('-created_at')[:20]
     
     return render(request, 'diagnosis/diagnosis_home.html', {
-        'patients': patients,
+        'patient_images': patient_images,
         'search_id': search_id,
-        'search_name': search_name,
+        'search_image_type': search_image_type,
         'search_date': search_date
     })
 
 # 上传CT图像视图
 def upload_ct(request, patient_id=None):
-    """上传CT图像页面"""
+    """基于PatientInfo的诊断页面"""
     try:
         if patient_id:
-            # 获取特定患者信息
-            patient = get_object_or_404(Patient, patient_id=patient_id)
+            # 获取该患者ID的PatientInfo记录，优先获取超声图像
+            from patient_records.models import PatientInfo
+            patient_images = PatientInfo.objects.filter(patient_id=patient_id).order_by('-created_at')
             
-            # 获取患者的临床特征
+            if not patient_images.exists():
+                messages.error(request, f"未找到患者ID {patient_id} 的图像记录")
+                return redirect('diagnosis:home')
+            
+            # 获取最新的PatientInfo记录作为主要参考
+            patient_info = patient_images.first()
+            
+            # 尝试获取对应的Patient记录（如果存在）
             try:
-                clinical_features = ClinicalFeature.objects.get(patient=patient)
-            except ClinicalFeature.DoesNotExist:
+                patient = Patient.objects.get(patient_id=patient_id)
+                # 获取患者的临床特征
+                try:
+                    clinical_features = ClinicalFeature.objects.get(patient=patient)
+                except ClinicalFeature.DoesNotExist:
+                    clinical_features = None
+            except Patient.DoesNotExist:
+                patient = None
                 clinical_features = None
                 
             context = {
-                'patient': patient,
-                'clinical_features': clinical_features,
+                'patient_info': patient_info,
+                'patient_images': patient_images,
+                'patient': patient,  # 可能为None
+                'clinical_features': clinical_features,  # 可能为None
             }
             
             return render(request, 'diagnosis/upload_ct.html', context)
@@ -1024,3 +1037,128 @@ def diagnosis_database(request):
     诊断数据库页面视图，仅渲染前端模板
     """
     return render(request, 'diagnosis/diagnosis_database.html')
+
+def upload_patient_images(request):
+    """上传患者图像页面和处理逻辑"""
+    if request.method == 'POST':
+        try:
+            # 处理文件上传
+            uploaded_files = request.FILES.getlist('images')
+            image_type = request.POST.get('image_type', 'CT')
+            
+            if not uploaded_files:
+                messages.error(request, '请选择要上传的图像文件')
+                return redirect('diagnosis:upload_patient_images')
+            
+            from patient_records.models import PatientInfo
+            from django.db import transaction
+            
+            # 获取当前登录的医生
+            doctor_id = request.session.get('doctor_id')
+            if not doctor_id:
+                messages.error(request, '请先登录')
+                return redirect('login')
+            
+            doctor = get_object_or_404(Doctor, doctor_id=doctor_id)
+            
+            success_count = 0
+            error_files = []
+            
+            with transaction.atomic():
+                for uploaded_file in uploaded_files:
+                    try:
+                        # 检查文件格式
+                        if not uploaded_file.name.lower().endswith('.nii.gz'):
+                            error_files.append(f"{uploaded_file.name}: 不支持的文件格式，只支持.nii.gz格式")
+                            continue
+                        
+                        # 从文件名中提取患者ID
+                        file_name = uploaded_file.name
+                        patient_id = extract_patient_id_from_filename(file_name)
+                        
+                        if not patient_id:
+                            error_files.append(f"{uploaded_file.name}: 无法从文件名中提取患者ID")
+                            continue
+                        
+                        # 确定存储路径
+                        import os
+                        from django.conf import settings
+                        
+                        # 获取图像类型对应的文件夹
+                        type_folder_map = {
+                            'US': 'US',
+                            'CT': 'CT', 
+                            'MRI': 'MRI',
+                            'X-ray': 'X-ray'
+                        }
+                        folder_name = type_folder_map.get(image_type, 'CT')
+                        
+                        # 创建目标目录
+                        upload_dir = os.path.join('data', 'upload', folder_name)
+                        full_upload_dir = os.path.join(settings.BASE_DIR, upload_dir)
+                        os.makedirs(full_upload_dir, exist_ok=True)
+                        
+                        # 构建文件路径
+                        file_path = os.path.join(upload_dir, uploaded_file.name)
+                        full_file_path = os.path.join(full_upload_dir, uploaded_file.name)
+                        
+                        # 保存文件到指定目录
+                        with open(full_file_path, 'wb+') as destination:
+                            for chunk in uploaded_file.chunks():
+                                destination.write(chunk)
+                        
+                        # 创建PatientInfo记录
+                        patient_info = PatientInfo.objects.create(
+                            patient_id=patient_id,
+                            image_style=image_type,
+                            image=file_path,
+                            created_by=doctor
+                        )
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_files.append(f"{uploaded_file.name}: {str(e)}")
+                        continue
+            
+            # 显示结果消息
+            if success_count > 0:
+                messages.success(request, f'成功上传 {success_count} 个图像文件')
+            
+            if error_files:
+                for error in error_files:
+                    messages.error(request, error)
+            
+            return redirect('diagnosis:upload_patient_images')
+            
+        except Exception as e:
+            messages.error(request, f'上传过程中发生错误: {str(e)}')
+            return redirect('diagnosis:upload_patient_images')
+    
+    # GET请求，显示上传页面
+    return render(request, 'diagnosis/upload_patient_images.html')
+
+def extract_patient_id_from_filename(filename):
+    """从文件名中提取患者ID"""
+    import re
+    
+    # 移除文件扩展名
+    name_without_ext = filename.replace('.nii.gz', '')
+    
+    # 尝试多种模式提取患者ID
+    patterns = [
+        r'patient[_-]?(\d+)',  # patient_123, patient-123, patient123
+        r'(\d+)',              # 直接的数字
+        r'ID[_-]?(\d+)',       # ID_123, ID-123, ID123
+        r'P(\d+)',             # P123
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, name_without_ext, re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1))
+            except (ValueError, IndexError):
+                continue
+    
+    return None

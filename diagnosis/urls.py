@@ -11,6 +11,9 @@ urlpatterns = [
     path('upload-ct/', views.upload_ct, name='upload_ct'),
     path('upload-ct/<int:patient_id>/', views.upload_ct, name='upload_ct'),
     
+    # 上传患者图像（新功能）
+    path('upload-images/', views.upload_patient_images, name='upload_patient_images'),
+    
     # 处理CT图像上传
     path('process-ct/', views.process_ct, name='process_ct'),
     
@@ -27,7 +30,4 @@ urlpatterns = [
     path('api/patient-info/<int:patient_id>/', views.get_patient_info, name='patient_info'),
     path('api/diagnose/', views.ajax_diagnose, name='ajax_diagnose'),
     path('api/remote-diagnose/', views.run_remote_diagnosis, name='remote_diagnose'),
-
-    # 超声影像可视化页面
-    path('ultrasound_viewer/', views.ultrasound_viewer, name='ultrasound_viewer'),
 ]

@@ -168,16 +168,7 @@
     <!-- 搜索区域 -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-search me-2"></i> 搜索患者</span>
-            <!-- 新增浏览按钮（样式可根据需求调整） -->
-    <button type="button" class="btn btn-outline-secondary" onclick="openPatientList()">
-        浏览
-    </button>
-            {% comment %} <script>
-                function openPatientList() {
-                    window.location.href = "{% url 'diagnosis:patient_list' %}";
-                }
-            </script> {% endcomment %}
+            <span><i class="bi bi-search me-2"></i> 搜索患者图像</span>
         </div>
         <div class="card-body"  style="border-radius: 10px;box-shadow: 0 2px 4px #e2e1e1;">
             <form method="get" class="row g-3">
@@ -188,26 +179,32 @@
                         <input type="text" class="form-control" id="search_id" name="search_id" placeholder="输入患者ID" value="{{ search_id|default:'' }}">
                     </div>
                 </div>
-                {% comment %} <div class="col-md-3">
-                    <label for="search_name" class="form-label">姓名</label>
+                <div class="col-md-3">
+                    <label for="search_image_type" class="form-label">图像类型</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input type="text" class="form-control" id="search_name" name="search_name" placeholder="输入患者姓名" value="{{ search_name|default:'' }}">
+                        <span class="input-group-text"><i class="bi bi-image"></i></span>
+                        <select class="form-control" id="search_image_type" name="search_image_type">
+                            <option value="">全部类型</option>
+                            <option value="US" {% if search_image_type == 'US' %}selected{% endif %}>超声 (US)</option>
+                            <option value="CT" {% if search_image_type == 'CT' %}selected{% endif %}>CT扫描</option>
+                            <option value="MRI" {% if search_image_type == 'MRI' %}selected{% endif %}>核磁共振 (MRI)</option>
+                            <option value="X-ray" {% if search_image_type == 'X-ray' %}selected{% endif %}>X光</option>
+                        </select>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <label for="search_date" class="form-label">创建日期</label>
+                    <label for="search_date" class="form-label">上传日期</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-calendar"></i></span>
                         <input type="date" class="form-control" id="search_date" name="search_date" value="{{ search_date|default:'' }}">
                     </div>
-                </div> {% endcomment %}
+                </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <div class="d-grid gap-2 w-100">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-search me-1"></i> 搜索
                         </button>
-                        <button type="reset" class="btn btn-secondary">
+                        <button type="reset" class="btn btn-secondary" onclick="window.location.href='{% url 'diagnosis:home' %}'">
                             <i class="bi bi-arrow-counterclockwise me-1"></i> 重置
                         </button>
                     </div>
@@ -216,64 +213,69 @@
         </div>
     </div>
     
-    <!-- 患者列表卡片 -->
+    <!-- 患者图像列表卡片 -->
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-people me-2"></i> 选择患者</span>
-            <span class="badge bg-primary text-white">共 {{ patients|length }} 位患者</span>
+            <span><i class="bi bi-images me-2"></i> 患者图像列表</span>
+            <span class="badge bg-primary text-white">共 {{ patient_images|length }} 个图像</span>
         </div>
         <div class="card-body">
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                {% if patients %}
-                    {% for patient in patients %}
+                {% if patient_images %}
+                    {% for patient_image in patient_images %}
                     <div class="col">
                         <div class="card h-100 patient-card">
                             <div class="card-body" style="border-radius: 10px;box-shadow: -1px 2px 4px #e7e6e6;">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <h5 class="card-title">
-                                        <i class="bi bi-person-circle me-2"></i>
-                                        {{ patient.name }} 
-                                        <small class="text-muted">({% if patient.clinical_features %}{{ patient.clinical_features.age }}{% else %}{{ patient.get_age }}{% endif %}岁)</small>
+                                        <i class="bi bi-file-earmark-medical me-2"></i>
+                                        患者ID: {{ patient_image.patient_id }}
                                     </h5>
-                                    <span class="badge bg-light text-dark">ID: {{ patient.patient_id }}</span>
+                                    <span class="badge 
+                                        {% if patient_image.image_style == 'US' %}bg-success
+                                        {% elif patient_image.image_style == 'CT' %}bg-primary
+                                        {% elif patient_image.image_style == 'MRI' %}bg-warning
+                                        {% else %}bg-info
+                                        {% endif %} text-white">
+                                        {{ patient_image.image_style }}
+                                    </span>
                                 </div>
                                 
                                 <div class="card-info">
                                     <p>
-                                        <strong><i class="bi bi-gender-ambiguous me-1"></i> 性别:</strong> 
-                                        {{ patient.get_gender_display }}
-                                    </p>
-                                    <p>
-                                        <strong><i class="bi bi-thermometer-half me-1"></i> 体温:</strong> 
-                                        {% if patient.clinical_features %}
-                                        {% with cf=patient.clinical_features %}
-                                            <span class="text-{{ cf.body_temperature|temp_status|cut:'status-' }}">{{ cf.body_temperature }}°C</span>
-                                        {% endwith %}
-                                        {% else %}
-                                            <span class="text-muted">未记录</span>
+                                        <strong><i class="bi bi-image me-1"></i> 图像类型:</strong> 
+                                        {% if patient_image.image_style == 'US' %}超声
+                                        {% elif patient_image.image_style == 'CT' %}CT扫描
+                                        {% elif patient_image.image_style == 'MRI' %}核磁共振
+                                        {% elif patient_image.image_style == 'X-ray' %}X光
+                                        {% else %}{{ patient_image.image_style }}
                                         {% endif %}
                                     </p>
                                     <p>
-                                        <strong><i class="bi bi-bandaid me-1"></i> 基础疾病:</strong> 
-                                        {% if patient.clinical_features.underlying_diseases %}
-                                            {{ patient.clinical_features.underlying_diseases }}
-                                        {% else %}
-                                            <span class="text-muted">无</span>
-                                        {% endif %}
+                                        <strong><i class="bi bi-clock me-1"></i> 上传时间:</strong> 
+                                        {{ patient_image.created_at|date:"Y-m-d H:i" }}
                                     </p>
                                     <p>
-                                        <strong><i class="bi bi-telephone me-1"></i> 联系方式:</strong> 
-                                        {% if patient.phone %}
-                                            {{ patient.phone }}
-                                        {% else %}
-                                            <span class="text-muted">未填写</span>
-                                        {% endif %}
+                                        <strong><i class="bi bi-person-badge me-1"></i> 创建医生:</strong> 
+                                        {{ patient_image.created_by.full_name }}
                                     </p>
+                                    {% if patient_image.image %}
+                                    <p>
+                                        <strong><i class="bi bi-file-image me-1"></i> 图像文件:</strong> 
+                                        <small class="text-muted">{{ patient_image.image.name|default:"未上传" }}</small>
+                                    </p>
+                                    {% endif %}
                                 </div>
                                 
-                                <a href="{% url 'diagnosis:upload_ct' patient_id=patient.patient_id %}" class="btn btn-primary w-100">
+                                {% if patient_image.image_style == 'US' %}
+                                <a href="{% url 'diagnosis:upload_ct' patient_id=patient_image.patient_id %}" class="btn btn-primary w-100">
                                     <i class="bi bi-clipboard-pulse me-1"></i> 开始诊断
                                 </a>
+                                {% else %}
+                                <div class="btn btn-outline-secondary w-100" disabled>
+                                    <i class="bi bi-info-circle me-1"></i> 仅支持超声图像诊断
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -281,7 +283,7 @@
                 {% else %}
                     <div class="col-12">
                         <div class="alert" style="background-color: var(--el-color-info-light); color: var(--el-color-info); border-radius: var(--el-border-radius-base); padding: 15px; border: 1px solid var(--el-color-info-lighter);">
-                            <i class="bi bi-info-circle me-2"></i> 没有找到符合条件的患者
+                            <i class="bi bi-info-circle me-2"></i> 没有找到符合条件的患者图像
                         </div>
                     </div>
                 {% endif %}

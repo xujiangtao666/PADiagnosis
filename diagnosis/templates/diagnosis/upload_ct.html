@@ -29,20 +29,29 @@
             <span><i class="bi bi-person-badge me-2"></i> 患者信息</span>
         </div>
         <div class="card-body">
-            {% if patient %}
-            <input type="hidden" id="id_patient" name="patient_id" value="{{ patient.patient_id }}">
+            {% if patient_info %}
+            <input type="hidden" id="id_patient" name="patient_id" value="{{ patient_info.patient_id }}">
             <div class="row">
                 <div class="col-md-6">
                     <div class="d-flex gap-3">
                         <div class="patient-avatar bg-light rounded-circle d-flex justify-content-center align-items-center" style="width: 80px; height: 80px;">
-                            <i class="bi bi-person text-primary" style="font-size: 2.5rem;"></i>
+                            <i class="bi bi-file-earmark-medical text-primary" style="font-size: 2.5rem;"></i>
                         </div>
                         <div class="patient-info">
-                            <h4 class="mb-1">{{ patient.name }} <small class="text-muted">
-                                ({% if patient.clinical_features %}{{ patient.clinical_features.age }}{% else %}{{ patient.get_age }}{% endif %}岁)
-                            </small></h4>
-                            <p class="mb-1 text-muted">ID: {{ patient.patient_id }}</p>
-                            <div class="badge bg-primary">{{ patient.get_gender_display }}</div>
+                            <h4 class="mb-1">患者ID: {{ patient_info.patient_id }}
+                                {% if patient %}
+                                <small class="text-muted">
+                                    ({{ patient.name }} - {% if patient.clinical_features %}{{ patient.clinical_features.age }}{% else %}{{ patient.get_age }}{% endif %}岁)
+                                </small>
+                                {% endif %}
+                            </h4>
+                            <p class="mb-1 text-muted">图像类型: {{ patient_info.image_style }}</p>
+                            <div class="badge 
+                                {% if patient_info.image_style == 'US' %}bg-success
+                                {% elif patient_info.image_style == 'CT' %}bg-primary
+                                {% elif patient_info.image_style == 'MRI' %}bg-warning
+                                {% else %}bg-info
+                                {% endif %}">{{ patient_info.image_style }}</div>
                         </div>
                     </div>
                 </div>
@@ -50,25 +59,23 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="info-item mb-2">
-                                <div class="info-label text-muted">体温</div>
-                                {% if patient.clinical_features %}
-                                {% with cf=patient.clinical_features %}
-                                <div class="info-value text-{{ cf.body_temperature|temp_status|cut:'status-' }} fw-semibold">{{ cf.body_temperature }}°C</div>
-                                {% endwith %}
-                                {% else %}
-                                <div class="info-value">未记录</div>
-                                {% endif %}
+                                <div class="info-label text-muted">上传时间</div>
+                                <div class="info-value">{{ patient_info.created_at|date:"Y-m-d H:i" }}</div>
                             </div>
                             <div class="info-item mb-2">
-                                <div class="info-label text-muted">联系电话</div>
-                                <div class="info-value">{{ patient.phone|default:"未填写" }}</div>
+                                <div class="info-label text-muted">创建医生</div>
+                                <div class="info-value">{{ patient_info.created_by.full_name }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">
+                            {% if patient and patient.clinical_features %}
                             <div class="info-item mb-2">
-                                <div class="info-label text-muted">基础疾病</div>
-                                <div class="info-value">{{ patient.clinical_features.underlying_diseases|default:"无" }}</div>
+                                <div class="info-label text-muted">体温</div>
+                                {% with cf=patient.clinical_features %}
+                                <div class="info-value text-{{ cf.body_temperature|temp_status|cut:'status-' }} fw-semibold">{{ cf.body_temperature }}°C</div>
+                                {% endwith %}
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -92,7 +99,7 @@
             {% else %}
             <div class="alert alert-warning">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                未选择患者。请返回<a href="{% url 'diagnosis:home' %}" class="alert-link">诊断首页</a>选择一位患者进行诊断。
+                未找到患者图像信息。请返回<a href="{% url 'diagnosis:home' %}" class="alert-link">诊断首页</a>选择一个患者图像进行诊断。
             </div>
             {% endif %}
         </div>
@@ -106,7 +113,7 @@
         <div class="card-body">
             <form id="diagnose-form" method="post" enctype="multipart/form-data" action="{% url 'diagnosis:process_ct' %}">
                 {% csrf_token %}
-                <input type="hidden" name="patient_id" value="{{ patient.patient_id }}">
+                <input type="hidden" name="patient_id" value="{{ patient_info.patient_id }}">
                 
                 <div class="row">
                     <div class="col-md-6">

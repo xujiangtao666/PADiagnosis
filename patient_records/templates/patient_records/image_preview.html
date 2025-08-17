@@ -1,0 +1,2012 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}医学影像预览 - {{ patient_info.image_style }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'patient_records:patient_list' %}">患者医学图像管理</a></li>
+<li class="breadcrumb-item"><a href="{% url 'patient_records:ultrasound_viewer' patient_info_id %}">影像查看器</a></li>
+<li class="breadcrumb-item active" aria-current="page">影像预览</li>
+{% endblock %}
+
+{% block page_css %}
+    <style>
+    :root {
+        --medical-primary: #5ba3e6;
+        --medical-secondary: #87ceeb;
+        --medical-accent: #b3d9ff;
+        --medical-light: #f8fcff;
+        --medical-success: #90cdf4;
+        --medical-warning: #ffd93d;
+        --medical-danger: #ff8a95;
+        --gradient-medical: linear-gradient(135deg, #87ceeb 0%, #b3d9ff 100%);
+        --gradient-soft: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+        --shadow-light: 0 2px 15px rgba(91, 163, 230, 0.08);
+        --shadow-medium: 0 5px 25px rgba(91, 163, 230, 0.12);
+        --shadow-heavy: 0 10px 40px rgba(91, 163, 230, 0.15);
+        --text-primary: #2d5aa0;
+        --text-secondary: #5b7db8;
+        --text-muted: #8da4c7;
+        --bg-card: #ffffff;
+        --bg-hover: rgba(91, 163, 230, 0.05);
+    }
+
+    body {
+        background: var(--medical-light);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    
+    .preview-container {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 2.5rem;
+        margin: 2rem 0;
+        box-shadow: var(--shadow-medium);
+        border: 1px solid rgba(91, 163, 230, 0.08);
+    }
+    
+    .page-header {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-light);
+        border-left: 4px solid var(--medical-primary);
+        border: 1px solid rgba(91, 163, 230, 0.08);
+    }
+    
+    .page-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 1.8rem;
+        margin: 0;
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .breadcrumb-item a {
+        color: var(--medical-primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: var(--text-primary);
+    }
+    
+    .breadcrumb-item.active {
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+    
+    .back-btn {
+        background: var(--bg-card);
+        border: 2px solid var(--medical-primary);
+        border-radius: 30px;
+        padding: 12px 28px;
+        color: var(--medical-primary);
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+    
+    .back-btn:hover {
+        background: var(--gradient-medical);
+        color: var(--text-primary);
+        transform: translateY(-2px);
+        text-decoration: none;
+        box-shadow: var(--shadow-medium);
+    }
+    
+    .patient-summary {
+        background: var(--gradient-medical);
+        color: var(--text-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-medium);
+        border: 1px solid rgba(91, 163, 230, 0.1);
+    }
+    
+    .patient-summary h5 {
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+    
+    .patient-summary .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .patient-summary .info-item {
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .patient-summary .info-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    
+    .patient-summary .info-value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .viewer-wrapper {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 0;
+        box-shadow: var(--shadow-medium);
+        border: 1px solid rgba(91, 163, 230, 0.08);
+        min-height: 600px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .viewer-header {
+        background: var(--gradient-soft);
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid rgba(91, 163, 230, 0.1);
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+    
+    .viewer-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .viewer-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .control-btn {
+        background: var(--bg-card);
+        border: 1px solid var(--medical-primary);
+        border-radius: 8px;
+        padding: 8px 16px;
+        color: var(--medical-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .control-btn:hover {
+        background: var(--medical-primary);
+        color: white;
+    }
+    
+    .viewer-content {
+        padding: 2rem;
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid var(--medical-accent);
+        border-top: 4px solid var(--medical-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .progress-container {
+        width: 300px;
+        height: 6px;
+        background: rgba(91, 163, 230, 0.2);
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: var(--gradient-medical);
+        border-radius: 3px;
+        animation: loading-progress 3s ease-in-out;
+        transform-origin: left;
+    }
+    
+    @keyframes loading-progress {
+        0% { transform: scaleX(0); }
+        50% { transform: scaleX(0.7); }
+        90% { transform: scaleX(0.9); }
+        100% { transform: scaleX(1); }
+    }
+    
+    .pulse-dot {
+        display: inline-block;
+        animation: pulse-dots 1.4s infinite;
+    }
+    
+    .pulse-dot:nth-child(2) { animation-delay: 0.2s; }
+    .pulse-dot:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes pulse-dots {
+        0%, 60%, 100% { opacity: 0.3; }
+        30% { opacity: 1; }
+    }
+    
+    .file-info-card {
+        background: var(--gradient-soft);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(91, 163, 230, 0.1);
+    }
+    
+    .file-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .file-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .file-info-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--medical-primary);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+    
+    .file-info-text {
+        flex: 1;
+    }
+    
+    .file-info-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .file-info-value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+    }
+    
+    .action-btn {
+        background: var(--gradient-medical);
+        border: none;
+        border-radius: 30px;
+        padding: 12px 24px;
+        color: var(--text-primary);
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-light);
+        font-size: 1rem;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+        color: var(--text-primary);
+        text-decoration: none;
+    }
+    
+    .action-btn.primary {
+        background: var(--medical-primary);
+        color: white;
+    }
+    
+    .action-btn.primary:hover {
+        background: var(--text-primary);
+        color: white;
+    }
+    
+    .nifti-viewer {
+        width: 100%;
+        height: 500px;
+        border: 1px solid rgba(91, 163, 230, 0.2);
+        border-radius: 8px;
+        background: #000;
+        position: relative;
+    }
+    
+    .viewer-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-muted);
+        text-align: center;
+    }
+    
+    .viewer-placeholder i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: var(--medical-primary);
+    }
+    
+    .error-message {
+        background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+        color: #c62828;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="bi bi-eye me-3"></i>医学影像预览
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'patient_records:patient_list' %}">患者医学图像管理</a></li>
+                        {% if patient_info_id %}
+                        <li class="breadcrumb-item"><a href="{% url 'patient_records:ultrasound_viewer' patient_info_id %}">影像查看器</a></li>
+                        {% else %}
+                        <li class="breadcrumb-item">影像查看器 (ID错误)</li>
+                        {% endif %}
+                        <li class="breadcrumb-item active" aria-current="page">影像预览</li>
+                    </ol>
+                </nav>
+                <!-- Debug info -->
+                <small class="text-muted">Debug: patient_info_id={{ patient_info_id }}, patient_id={{ patient_id }}</small>
+            </div>
+            {% if patient_info_id %}
+            <a href="{% url 'patient_records:ultrasound_viewer' patient_info_id %}" class="back-btn">
+                <i class="bi bi-arrow-left me-2"></i>返回查看器
+            </a>
+            {% else %}
+            <a href="{% url 'patient_records:patient_list' %}" class="back-btn">
+                <i class="bi bi-arrow-left me-2"></i>返回列表
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 患者信息摘要 -->
+    <div class="patient-summary">
+        <h5><i class="bi bi-person-badge me-2"></i>患者信息</h5>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">患者ID</div>
+                <div class="info-value">{{ patient_info.patient_id }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">影像类型</div>
+                <div class="info-value">
+                    {% if patient_info.image_style == 'US' %}超声 (US)
+                    {% elif patient_info.image_style == 'CT' %}CT扫描
+                    {% elif patient_info.image_style == 'MRI' %}核磁共振 (MRI)
+                    {% elif patient_info.image_style == 'X-ray' %}X光
+                    {% else %}{{ patient_info.image_style }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">上传时间</div>
+                <div class="info-value">{{ patient_info.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">创建医生</div>
+                <div class="info-value">{{ patient_info.created_by.full_name }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 文件信息卡片 -->
+    <div class="file-info-card">
+        <h6 style="color: var(--text-primary); font-weight: 600; margin-bottom: 1.5rem;">
+            <i class="bi bi-file-earmark-medical me-2"></i>文件详细信息
+        </h6>
+        <div class="file-info-grid">
+            <div class="file-info-item">
+                <div class="file-info-icon">
+                    <i class="bi bi-file-earmark"></i>
+                </div>
+                <div class="file-info-text">
+                    <div class="file-info-label">文件格式</div>
+                    <div class="file-info-value">NIfTI (.nii.gz)</div>
+                </div>
+            </div>
+            <div class="file-info-item">
+                <div class="file-info-icon">
+                    <i class="bi bi-hdd"></i>
+                </div>
+                <div class="file-info-text">
+                    <div class="file-info-label">文件大小</div>
+                    <div class="file-info-value">
+                        {% if file_size %}
+                            {% if file_size > 1048576 %}
+                                {{ file_size|filesizeformat }}
+                            {% else %}
+                                {{ file_size|filesizeformat }}
+                            {% endif %}
+                        {% else %}
+                            未知
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="file-info-item">
+                <div class="file-info-icon">
+                    <i class="bi bi-layers"></i>
+                </div>
+                <div class="file-info-text">
+                    <div class="file-info-label">数据类型</div>
+                    <div class="file-info-value">3D医学影像体积</div>
+                </div>
+            </div>
+            <div class="file-info-item">
+                <div class="file-info-icon">
+                    <i class="bi bi-cpu"></i>
+                </div>
+                <div class="file-info-text">
+                    <div class="file-info-label">渲染模式</div>
+                    <div class="file-info-value">WebGL 三维可视化</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 影像查看器 -->
+    <div class="viewer-wrapper">
+        <div class="viewer-header">
+            <h6 class="viewer-title">
+                <i class="bi bi-eye me-2"></i>NIfTI 医学影像查看器
+            </h6>
+            <div class="viewer-controls">
+                <button class="control-btn" onclick="resetView()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>重置视图
+                </button>
+                <button class="control-btn" onclick="toggleFullscreen()">
+                    <i class="bi bi-fullscreen me-1"></i>全屏
+                </button>
+            </div>
+        </div>
+        <div class="viewer-content">
+            <div id="nifti-viewer" class="nifti-viewer">
+                <!-- 加载状态 -->
+                <div class="viewer-placeholder" id="loading-placeholder">
+                    <div class="loading-spinner"></div>
+                    <h5 id="loading-title">正在加载医学影像</h5>
+                    <div class="progress-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                    <p id="loading-text">
+                        正在解析NIfTI文件格式
+                        <span class="pulse-dot">.</span>
+                        <span class="pulse-dot">.</span>
+                        <span class="pulse-dot">.</span>
+                    </p>
+                </div>
+                
+                <!-- 2D切片查看器 -->
+                <div id="slice-viewer" style="display: none; height: 100%; background: #000;">
+                    <!-- 顶部工具栏 -->
+                    <div class="d-flex justify-content-between align-items-center p-2" style="background: rgba(30, 30, 30, 0.9); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div class="d-flex align-items-center text-white">
+                            <i class="bi bi-layers me-2"></i>
+                            <span id="slice-info">切片 1 / 100</span>
+                            <span class="ms-3 text-muted" id="view-plane-info">轴位视图</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- 视图方向选择 -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check" name="view-plane" id="axial-view" value="axial" checked>
+                                <label class="btn btn-outline-light" for="axial-view" style="font-size: 0.75rem;">轴位</label>
+                                
+                                <input type="radio" class="btn-check" name="view-plane" id="sagittal-view" value="sagittal">
+                                <label class="btn btn-outline-light" for="sagittal-view" style="font-size: 0.75rem;">矢状位</label>
+                                
+                                <input type="radio" class="btn-check" name="view-plane" id="coronal-view" value="coronal">
+                                <label class="btn btn-outline-light" for="coronal-view" style="font-size: 0.75rem;">冠状位</label>
+                            </div>
+                            
+                            <!-- 窗宽窗位显示 -->
+                            <div class="text-white" style="font-size: 0.75rem;">
+                                <span>W/L: </span><span id="window-level-info">400/40</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 主显示区域 -->
+                    <div class="position-relative" style="height: calc(100% - 100px); overflow: hidden;">
+                        <!-- 图像Canvas -->
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <canvas id="slice-canvas" style="max-width: 100%; max-height: 100%; image-rendering: pixelated;"></canvas>
+                        </div>
+                        
+                        <!-- 图像信息覆盖层 -->
+                        <div id="image-overlay" class="position-absolute text-white" style="
+                            top: 10px; right: 10px; 
+                            background: rgba(0,0,0,0.8); 
+                            padding: 8px 12px; 
+                            border-radius: 6px;
+                            font-size: 0.75rem;
+                            line-height: 1.4;
+                        ">
+                            <div><strong>{{ patient_info.patient_id }}</strong></div>
+                            <div>维度: <span id="dimensions-display">-</span></div>
+                            <div>间距: <span id="spacing-display">-</span></div>
+                            <div>类型: <span id="datatype-display">-</span></div>
+                        </div>
+                        
+                        <!-- 切片位置指示器 -->
+                        <div id="slice-position" class="position-absolute text-white" style="
+                            bottom: 10px; left: 10px;
+                            background: rgba(0,0,0,0.8);
+                            padding: 6px 10px;
+                            border-radius: 4px;
+                            font-size: 0.8rem;
+                        ">
+                            <span id="current-slice">0</span> / <span id="total-slices">0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 底部控制栏 -->
+                    <div class="p-2" style="background: rgba(30, 30, 30, 0.9); border-top: 1px solid rgba(255,255,255,0.1);">
+                        <!-- 切片导航 -->
+                        <div class="d-flex align-items-center">
+                            <button id="first-slice-btn" class="btn btn-outline-light btn-sm me-1" style="font-size: 0.7rem; padding: 2px 6px;">
+                                <i class="bi bi-skip-start"></i>
+                            </button>
+                            <button id="prev-slice-btn" class="btn btn-outline-light btn-sm me-2" style="font-size: 0.7rem; padding: 2px 6px;">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            
+                            <div class="flex-grow-1 mx-2">
+                                <input type="range" id="slice-slider" class="form-range" min="0" max="99" value="0" 
+                                       style="accent-color: var(--medical-primary); height: 6px;">
+                            </div>
+                            
+                            <button id="next-slice-btn" class="btn btn-outline-light btn-sm ms-2" style="font-size: 0.7rem; padding: 2px 6px;">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <button id="last-slice-btn" class="btn btn-outline-light btn-sm ms-1" style="font-size: 0.7rem; padding: 2px 6px;">
+                                <i class="bi bi-skip-end"></i>
+                            </button>
+                            
+                            <!-- 快捷操作 -->
+                            <div class="ms-3 d-flex gap-1">
+                                <button id="reset-view-btn" class="btn btn-outline-info btn-sm" style="font-size: 0.7rem; padding: 2px 8px;">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button id="save-slice-btn" class="btn btn-outline-success btn-sm" style="font-size: 0.7rem; padding: 2px 8px;">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+        {% if patient_info_id %}
+        <a href="{% url 'patient_records:ultrasound_viewer' patient_info_id %}" class="action-btn">
+            <i class="bi bi-arrow-left me-2"></i>返回查看器
+        </a>
+        {% else %}
+        <a href="{% url 'patient_records:patient_list' %}" class="action-btn">
+            <i class="bi bi-arrow-left me-2"></i>返回列表
+        </a>
+        {% endif %}
+        <a href="{{ patient_info.image.url }}" download class="action-btn primary">
+            <i class="bi bi-download me-2"></i>下载原始文件
+        </a>
+        <button class="action-btn" onclick="captureScreenshot()">
+            <i class="bi bi-camera me-2"></i>截图保存
+        </button>
+    </div>
+</div>
+
+<!-- 本地NIfTI解析器 -->
+<script>
+// 简化的NIfTI文件格式解析器
+class SimpleNiftiReader {
+    static readHeader(buffer) {
+        const view = new DataView(buffer);
+        const header = {};
+        
+        // NIfTI-1 header structure (simplified)
+        header.sizeof_hdr = view.getInt32(0, true);
+        header.dim = [];
+        for (let i = 0; i < 8; i++) {
+            header.dim[i] = view.getInt16(40 + i * 2, true);
+        }
+        header.datatype = view.getInt16(70, true);
+        header.bitpix = view.getInt16(72, true);
+        header.pixdim = [];
+        for (let i = 0; i < 8; i++) {
+            header.pixdim[i] = view.getFloat32(76 + i * 4, true);
+        }
+        header.vox_offset = view.getFloat32(108, true);
+        header.scl_slope = view.getFloat32(112, true);
+        header.scl_inter = view.getFloat32(116, true);
+        
+        // 验证NIfTI魔数
+        const magic = String.fromCharCode(
+            view.getUint8(344), view.getUint8(345), 
+            view.getUint8(346), view.getUint8(347)
+        );
+        header.magic = magic;
+        header.isValid = magic === 'ni1\0' || magic === 'n+1\0';
+        
+        return header;
+    }
+    
+    static isCompressed(buffer) {
+        // 检查文件开头是否为gzip魔数
+        const view = new Uint8Array(buffer, 0, 2);
+        return view[0] === 0x1f && view[1] === 0x8b;
+    }
+    
+    static decompress(buffer) {
+        // 使用pako库解压或提示用户
+        if (typeof pako !== 'undefined') {
+            return pako.inflate(buffer).buffer;
+        } else {
+            throw new Error('需要解压库来处理.gz文件');
+        }
+    }
+    
+    static readImage(header, buffer) {
+        const offset = header.vox_offset || 352;
+        const dataSize = header.dim[1] * header.dim[2] * header.dim[3];
+        
+        let imageData;
+        switch (header.datatype) {
+            case 2: // unsigned char
+                imageData = new Uint8Array(buffer, offset, dataSize);
+                break;
+            case 4: // signed short
+                imageData = new Int16Array(buffer, offset, dataSize);
+                break;
+            case 8: // signed int
+                imageData = new Int32Array(buffer, offset, dataSize);
+                break;
+            case 16: // float
+                imageData = new Float32Array(buffer, offset, dataSize);
+                break;
+            case 64: // double
+                imageData = new Float64Array(buffer, offset, dataSize);
+                break;
+            default:
+                imageData = new Uint8Array(buffer, offset, dataSize);
+        }
+        
+        return imageData;
+    }
+}
+
+// 设置全局nifti对象
+window.nifti = SimpleNiftiReader;
+window.niftiLoaded = true;
+console.log('✅ 本地NIfTI解析器已加载');
+</script>
+<!-- 解压库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js" onload="console.log('✅ Pako解压库加载成功')" onerror="console.log('❌ Pako解压库加载失败')"></script>
+<!-- Three.js 和相关库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onload="console.log('✅ Three.js加载成功')" onerror="console.log('❌ Three.js加载失败')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" onload="console.log('✅ OrbitControls加载成功')" onerror="console.log('❌ OrbitControls加载失败')"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面DOM加载完成，开始初始化查看器');
+    
+    // 立即检查库状态
+    console.log('立即检查库状态:', {
+        THREE: !!window.THREE,
+        OrbitControls: !!(window.THREE && window.THREE.OrbitControls),
+        nifti: !!window.nifti,
+        document_ready: document.readyState
+    });
+    
+    // 更新加载状态
+    function updateLoadingStatus(status) {
+        const titleEl = document.getElementById('loading-title');
+        const textEl = document.getElementById('loading-text');
+        if (titleEl) titleEl.textContent = status.title;
+        if (textEl) {
+            textEl.innerHTML = status.text + 
+                '<span class="pulse-dot">.</span>' +
+                '<span class="pulse-dot">.</span>' +
+                '<span class="pulse-dot">.</span>';
+        }
+        console.log('更新加载状态:', status);
+    }
+    
+    // 简化的库检查逻辑
+    let checkAttempts = 0;
+    
+    function checkLibrariesAndInit() {
+        checkAttempts++;
+        console.log(`检查尝试 #${checkAttempts}`);
+        
+        const hasThree = !!(window.THREE);
+        const hasOrbitControls = !!(window.THREE && window.THREE.OrbitControls);
+        const hasNifti = !!(window.nifti) || window.niftiLoaded === true;
+        
+        console.log('当前库状态:', { 
+            hasThree, 
+            hasOrbitControls, 
+            hasNifti,
+            niftiGlobal: !!window.nifti,
+            niftiLoaded: window.niftiLoaded,
+            niftiAttempts: window.niftiLoadAttempts
+        });
+        
+        if (hasThree && hasOrbitControls && hasNifti) {
+            console.log('✅ 所有库已加载！初始化NIfTI查看器');
+            updateLoadingStatus({
+                title: '库加载完成',
+                text: '正在初始化医学影像查看器'
+            });
+            setTimeout(() => initNiftiViewer(), 100);
+        } else if (checkAttempts >= 8) {  // 1.6秒后放弃
+            console.log('⏰ 库加载超时，切换到简化查看器');
+            updateLoadingStatus({
+                title: '切换到简化模式',
+                text: '正在准备文件查看器'
+            });
+            setTimeout(() => {
+                initSimpleViewer();
+                viewerInitialized = true;
+            }, 200);
+        } else {
+            // 继续等待
+            updateLoadingStatus({
+                title: `正在加载第三方库 (${checkAttempts}/10)`,
+                text: '加载WebGL和NIfTI解析器'
+            });
+            setTimeout(checkLibrariesAndInit, 200);
+        }
+    }
+    
+    // 立即开始检查
+    updateLoadingStatus({
+        title: '正在初始化查看器',
+        text: '检查必需组件'
+    });
+    
+    checkLibrariesAndInit();
+});
+
+// 2D切片查看器全局变量
+let volumeData = null;
+let currentSlice = 0;
+let currentPlane = 'axial'; // 'axial', 'sagittal', 'coronal'
+let canvas, ctx;
+let imageData = null;
+let header = null;
+let windowWidth = 400, windowLevel = 40;
+
+function initNiftiViewer() {
+    if (viewerInitialized) return;
+    
+    try {
+        console.log('开始初始化2D医学影像查看器');
+        viewerInitialized = true;
+        
+        // 加载真实的NIfTI文件
+        loadNiftiFile('{{ image_url }}');
+        
+        console.log('✅ 2D切片查看器初始化完成');
+        
+    } catch (error) {
+        console.error('初始化查看器失败:', error);
+        viewerInitialized = false;  // 重置状态，允许简化查看器初始化
+        // 如果WebGL初始化失败，使用简化查看器
+        setTimeout(() => {
+            if (!viewerInitialized) {
+                initSimpleViewer();
+                viewerInitialized = true;
+            }
+        }, 100);
+    }
+}
+
+// 全局状态
+let viewerInitialized = false;
+
+// 1.5秒后强制使用简化查看器（保险机制）
+setTimeout(function() {
+    if (!viewerInitialized) {
+        console.log('🚨 强制超时保护：立即显示简化查看器');
+        initSimpleViewer();
+        viewerInitialized = true;
+    }
+}, 1500);
+
+function createDemoMedicalVisualization() {
+    try {
+        // 创建一个代表医学图像的3D几何体
+        const geometry = new THREE.BoxGeometry(100, 100, 100);
+        
+        // 创建半透明材质
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x5ba3e6,
+            transparent: true,
+            opacity: 0.6,
+            wireframe: false
+        });
+        
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+        
+        // 添加一些内部结构（模拟医学图像内容）
+        for (let i = 0; i < 20; i++) {
+            const sphereGeometry = new THREE.SphereGeometry(3, 8, 6);
+            const sphereMaterial = new THREE.MeshPhongMaterial({
+                color: Math.random() * 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(
+                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 80
+            );
+            scene.add(sphere);
+        }
+        
+        // 添加边框
+        const edges = new THREE.EdgesGeometry(geometry);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x2d5aa0 });
+        const wireframe = new THREE.LineSegments(edges, lineMaterial);
+        scene.add(wireframe);
+        
+        console.log('✅ 创建了演示医学可视化');
+        
+        // 添加说明文字到页面
+        const container = document.getElementById('nifti-viewer');
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(45, 90, 160, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 100;
+            max-width: 300px;
+        `;
+        overlay.innerHTML = `
+            <strong>🔬 演示模式</strong><br>
+            这是一个3D WebGL演示。<br>
+            拖拽旋转，滚轮缩放。<br>
+            <small>实际NIfTI文件需要专业软件处理</small>
+        `;
+        container.appendChild(overlay);
+        
+    } catch (error) {
+        console.error('创建演示可视化失败:', error);
+    }
+}
+
+function loadNiftiFile(url) {
+    console.log('开始加载NIfTI文件:', url);
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.arrayBuffer();
+        })
+        .then(buffer => {
+            try {
+                console.log('文件已下载，大小:', buffer.byteLength, 'bytes');
+                
+                let workingBuffer = buffer;
+                
+                // 检查是否为压缩文件
+                if (window.nifti.isCompressed(buffer)) {
+                    console.log('检测到.gz压缩文件，正在解压...');
+                    if (typeof pako !== 'undefined') {
+                        const decompressed = pako.inflate(new Uint8Array(buffer));
+                        workingBuffer = decompressed.buffer;
+                        console.log('解压完成，解压后大小:', workingBuffer.byteLength, 'bytes');
+                    } else {
+                        throw new Error('需要解压库来处理.gz文件，但pako库未加载');
+                    }
+                }
+                
+                // 解析NIfTI文件头
+                header = window.nifti.readHeader(workingBuffer);
+                console.log('NIfTI Header解析完成:', header);
+                
+                if (!header.isValid) {
+                    throw new Error(`无效的NIfTI文件格式，魔数: ${header.magic}`);
+                }
+                
+                // 读取图像数据
+                imageData = window.nifti.readImage(header, workingBuffer);
+                console.log('图像数据加载完成, 维度:', header.dim.slice(1, 4), '数据类型:', header.datatype);
+                
+                // 初始化2D切片查看器
+                initSliceViewer(imageData, header);
+                
+            } catch (error) {
+                console.error('解析NIfTI文件失败:', error);
+                showError('无法解析NIfTI文件: ' + error.message);
+                // 显示简化查看器作为备用
+                initSimpleViewer();
+            }
+        })
+        .catch(error => {
+            console.error('加载文件失败:', error);
+            showError('无法加载影像文件: ' + error.message);
+            // 显示简化查看器作为备用
+            initSimpleViewer();
+        });
+}
+
+// 初始化2D切片查看器
+function initSliceViewer(data, niftiHeader) {
+    try {
+        console.log('初始化2D切片查看器');
+        
+        // 隐藏加载界面，显示切片查看器
+        document.getElementById('loading-placeholder').style.display = 'none';
+        document.getElementById('slice-viewer').style.display = 'block';
+        
+        // 保存数据
+        volumeData = data;
+        header = niftiHeader;
+        
+        // 获取Canvas
+        canvas = document.getElementById('slice-canvas');
+        ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        // 设置初始参数
+        const width = header.dim[1];
+        const height = header.dim[2];
+        const depth = header.dim[3];
+        
+        currentSlice = Math.floor(depth / 2); // 从中间切片开始
+        
+        // 更新UI信息
+        updateImageInfo();
+        updateWindowLevelDisplay();
+        setupSliceNavigation();
+        
+        // 渲染初始切片
+        renderSlice();
+        
+        console.log('✅ 2D切片查看器初始化成功');
+        
+    } catch (error) {
+        console.error('初始化切片查看器失败:', error);
+        showError('初始化2D查看器失败: ' + error.message);
+    }
+}
+
+// 设置切片导航控件
+function setupSliceNavigation() {
+    if (!header) return;
+    
+    const depth = getCurrentPlaneDepth();
+    const slider = document.getElementById('slice-slider');
+    const firstBtn = document.getElementById('first-slice-btn');
+    const prevBtn = document.getElementById('prev-slice-btn');
+    const nextBtn = document.getElementById('next-slice-btn');
+    const lastBtn = document.getElementById('last-slice-btn');
+    
+    // 设置滑动条范围
+    slider.min = 0;
+    slider.max = depth - 1;
+    slider.value = currentSlice;
+    
+    // 滑动条事件
+    slider.addEventListener('input', function() {
+        currentSlice = parseInt(this.value);
+        renderSlice();
+        updateSliceInfo();
+    });
+    
+    // 按钮事件
+    firstBtn.addEventListener('click', () => {
+        currentSlice = 0;
+        slider.value = currentSlice;
+        renderSlice();
+        updateSliceInfo();
+    });
+    
+    prevBtn.addEventListener('click', () => {
+        if (currentSlice > 0) {
+            currentSlice--;
+            slider.value = currentSlice;
+            renderSlice();
+            updateSliceInfo();
+        }
+    });
+    
+    nextBtn.addEventListener('click', () => {
+        if (currentSlice < depth - 1) {
+            currentSlice++;
+            slider.value = currentSlice;
+            renderSlice();
+            updateSliceInfo();
+        }
+    });
+    
+    lastBtn.addEventListener('click', () => {
+        currentSlice = depth - 1;
+        slider.value = currentSlice;
+        renderSlice();
+        updateSliceInfo();
+    });
+    
+    // 鼠标滚轮事件
+    canvas.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 1 : -1;
+        const newSlice = currentSlice + delta;
+        
+        if (newSlice >= 0 && newSlice < depth) {
+            currentSlice = newSlice;
+            slider.value = currentSlice;
+            renderSlice();
+            updateSliceInfo();
+        }
+    });
+    
+    // 视图方向切换
+    const viewButtons = document.querySelectorAll('input[name="view-plane"]');
+    viewButtons.forEach(button => {
+        button.addEventListener('change', function() {
+            if (this.checked) {
+                currentPlane = this.value;
+                currentSlice = Math.floor(getCurrentPlaneDepth() / 2);
+                setupSliceNavigation(); // 重新设置导航
+                renderSlice();
+                updateSliceInfo();
+                updateViewPlaneInfo();
+            }
+        });
+    });
+    
+    // 快捷键支持
+    document.addEventListener('keydown', function(e) {
+        if (!canvas.matches(':hover')) return;
+        
+        switch(e.key) {
+            case 'ArrowUp':
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (currentSlice > 0) {
+                    currentSlice--;
+                    slider.value = currentSlice;
+                    renderSlice();
+                    updateSliceInfo();
+                }
+                break;
+            case 'ArrowDown':
+            case 'ArrowRight':
+                e.preventDefault();
+                if (currentSlice < depth - 1) {
+                    currentSlice++;
+                    slider.value = currentSlice;
+                    renderSlice();
+                    updateSliceInfo();
+                }
+                break;
+        }
+    });
+    
+    // 绑定重置视图按钮
+    const resetBtn = document.getElementById('reset-view-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetView);
+    }
+    
+    // 绑定保存截图按钮
+    const saveBtn = document.getElementById('save-slice-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveCurrentSlice);
+    }
+}
+
+// 获取当前平面的深度
+function getCurrentPlaneDepth() {
+    if (!header) return 0;
+    
+    switch(currentPlane) {
+        case 'axial': return header.dim[3]; // Z轴
+        case 'sagittal': return header.dim[1]; // X轴  
+        case 'coronal': return header.dim[2]; // Y轴
+        default: return header.dim[3];
+    }
+}
+
+// 渲染当前切片
+function renderSlice() {
+    if (!volumeData || !header || !canvas || !ctx) return;
+    
+    try {
+        const width = header.dim[1];
+        const height = header.dim[2];
+        const depth = header.dim[3];
+        
+        let sliceWidth, sliceHeight, sliceData;
+        
+        // 根据当前视图方向提取切片数据
+        switch(currentPlane) {
+            case 'axial':
+                sliceWidth = width;
+                sliceHeight = height;
+                sliceData = extractAxialSlice(currentSlice);
+                break;
+            case 'sagittal':
+                sliceWidth = height;
+                sliceHeight = depth;
+                sliceData = extractSagittalSlice(currentSlice);
+                break;
+            case 'coronal':
+                sliceWidth = width;
+                sliceHeight = depth;
+                sliceData = extractCoronalSlice(currentSlice);
+                break;
+            default:
+                sliceWidth = width;
+                sliceHeight = height;
+                sliceData = extractAxialSlice(currentSlice);
+        }
+        
+        // 计算高分辨率渲染尺寸
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        const container = canvas.parentElement;
+        const containerWidth = container.clientWidth - 20;
+        const containerHeight = container.clientHeight - 20;
+        
+        // 计算最佳显示尺寸
+        const aspectRatio = sliceWidth / sliceHeight;
+        let displayWidth, displayHeight;
+        
+        if (containerWidth / containerHeight > aspectRatio) {
+            displayHeight = containerHeight;
+            displayWidth = displayHeight * aspectRatio;
+        } else {
+            displayWidth = containerWidth;
+            displayHeight = displayWidth / aspectRatio;
+        }
+        
+        // 设置Canvas实际渲染尺寸（考虑设备像素比）
+        const renderWidth = Math.floor(displayWidth * devicePixelRatio);
+        const renderHeight = Math.floor(displayHeight * devicePixelRatio);
+        
+        canvas.width = renderWidth;
+        canvas.height = renderHeight;
+        
+        // 设置Canvas CSS显示尺寸
+        canvas.style.width = displayWidth + 'px';
+        canvas.style.height = displayHeight + 'px';
+        
+        // 缩放上下文以匹配设备像素比
+        ctx.scale(devicePixelRatio, devicePixelRatio);
+        
+        // 使用双线性插值提高图像质量
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // 创建高分辨率图像数据
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = sliceWidth;
+        tempCanvas.height = sliceHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.imageSmoothingEnabled = false;
+        
+        const imageData = tempCtx.createImageData(sliceWidth, sliceHeight);
+        const data = imageData.data;
+        
+        // 应用窗宽窗位并转换为RGBA
+        for (let i = 0; i < sliceData.length; i++) {
+            const value = applyWindowLeveltoValue(sliceData[i]);
+            const pixelIndex = i * 4;
+            
+            data[pixelIndex] = value;     // R
+            data[pixelIndex + 1] = value; // G
+            data[pixelIndex + 2] = value; // B
+            data[pixelIndex + 3] = 255;   // A
+        }
+        
+        // 先绘制到临时Canvas
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // 然后缩放绘制到主Canvas，实现高质量插值
+        ctx.clearRect(0, 0, displayWidth, displayHeight);
+        ctx.drawImage(tempCanvas, 0, 0, sliceWidth, sliceHeight, 
+                     0, 0, displayWidth, displayHeight);
+        
+    } catch (error) {
+        console.error('渲染切片失败:', error);
+    }
+}
+
+// 提取轴位切片（Z方向）
+function extractAxialSlice(sliceIndex) {
+    const width = header.dim[1];
+    const height = header.dim[2];
+    const sliceSize = width * height;
+    const startIndex = sliceIndex * sliceSize;
+    
+    return volumeData.slice(startIndex, startIndex + sliceSize);
+}
+
+// 提取矢状位切片（X方向）
+function extractSagittalSlice(sliceIndex) {
+    const width = header.dim[1];
+    const height = header.dim[2];
+    const depth = header.dim[3];
+    const sliceData = new Float32Array(height * depth);
+    
+    for (let z = 0; z < depth; z++) {
+        for (let y = 0; y < height; y++) {
+            const volumeIndex = z * width * height + y * width + sliceIndex;
+            const sliceDataIndex = z * height + y;
+            sliceData[sliceDataIndex] = volumeData[volumeIndex];
+        }
+    }
+    
+    return sliceData;
+}
+
+// 提取冠状位切片（Y方向）
+function extractCoronalSlice(sliceIndex) {
+    const width = header.dim[1];
+    const height = header.dim[2];
+    const depth = header.dim[3];
+    const sliceData = new Float32Array(width * depth);
+    
+    for (let z = 0; z < depth; z++) {
+        for (let x = 0; x < width; x++) {
+            const volumeIndex = z * width * height + sliceIndex * width + x;
+            const sliceDataIndex = z * width + x;
+            sliceData[sliceDataIndex] = volumeData[volumeIndex];
+        }
+    }
+    
+    return sliceData;
+}
+
+// 应用窗宽窗位
+function applyWindowLeveltoValue(value) {
+    const minValue = windowLevel - windowWidth / 2;
+    const maxValue = windowLevel + windowWidth / 2;
+    
+    if (value <= minValue) return 0;
+    if (value >= maxValue) return 255;
+    
+    return Math.round(((value - minValue) / windowWidth) * 255);
+}
+
+// 调整Canvas显示尺寸（高DPI优化）
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    const containerWidth = container.clientWidth - 20;
+    const containerHeight = container.clientHeight - 20;
+    
+    // 获取设备像素比例，支持高DPI显示
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    const aspectRatio = canvas.width / canvas.height;
+    let displayWidth, displayHeight;
+    
+    if (containerWidth / containerHeight > aspectRatio) {
+        displayHeight = containerHeight;
+        displayWidth = displayHeight * aspectRatio;
+    } else {
+        displayWidth = containerWidth;
+        displayHeight = displayWidth / aspectRatio;
+    }
+    
+    // 设置Canvas的CSS显示尺寸
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+    
+    // 为高DPI显示优化Canvas实际尺寸
+    const scaledWidth = Math.floor(displayWidth * devicePixelRatio);
+    const scaledHeight = Math.floor(displayHeight * devicePixelRatio);
+    
+    // 只有在尺寸确实改变时才重新渲染
+    if (canvas.style.width !== displayWidth + 'px' || 
+        canvas.getAttribute('data-scaled-width') !== scaledWidth.toString()) {
+        
+        canvas.setAttribute('data-scaled-width', scaledWidth.toString());
+        canvas.setAttribute('data-scaled-height', scaledHeight.toString());
+        
+        // 重新渲染当前切片以适应新尺寸
+        renderSlice();
+    }
+}
+
+// 更新图像信息
+function updateImageInfo() {
+    if (!header) return;
+    
+    const dims = `${header.dim[1]}×${header.dim[2]}×${header.dim[3]}`;
+    const spacing = `${header.pixdim[1]?.toFixed(2)}×${header.pixdim[2]?.toFixed(2)}×${header.pixdim[3]?.toFixed(2)}mm`;
+    const datatype = getDataTypeName(header.datatype);
+    
+    document.getElementById('dimensions-display').textContent = dims;
+    document.getElementById('spacing-display').textContent = spacing;
+    document.getElementById('datatype-display').textContent = datatype;
+}
+
+// 更新切片信息
+function updateSliceInfo() {
+    const depth = getCurrentPlaneDepth();
+    document.getElementById('slice-info').textContent = `切片 ${currentSlice + 1} / ${depth}`;
+    document.getElementById('current-slice').textContent = currentSlice + 1;
+    document.getElementById('total-slices').textContent = depth;
+}
+
+// 更新视图方向信息
+function updateViewPlaneInfo() {
+    const planeNames = {
+        'axial': '轴位视图',
+        'sagittal': '矢状位视图', 
+        'coronal': '冠状位视图'
+    };
+    document.getElementById('view-plane-info').textContent = planeNames[currentPlane];
+}
+
+// 重置视图功能
+function resetView() {
+    if (!header) return;
+    
+    // 重置到轴位视图
+    currentPlane = 'axial';
+    document.getElementById('axial-view').checked = true;
+    
+    // 重置到中间切片
+    const depth = getCurrentPlaneDepth();
+    currentSlice = Math.floor(depth / 2);
+    
+    // 重置窗宽窗位
+    windowWidth = 400;
+    windowLevel = 40;
+    
+    // 更新UI
+    setupSliceNavigation();
+    renderSlice();
+    updateSliceInfo();
+    updateViewPlaneInfo();
+    updateWindowLevelDisplay();
+    
+    console.log('视图已重置到默认状态');
+}
+
+// 更新窗宽窗位显示
+function updateWindowLevelDisplay() {
+    document.getElementById('window-level-info').textContent = `${windowWidth}/${windowLevel}`;
+}
+
+// 保存当前切片截图
+function saveCurrentSlice() {
+    if (!canvas || !header) {
+        alert('没有可用的图像数据');
+        return;
+    }
+    
+    try {
+        // 创建一个用于导出的Canvas
+        const exportCanvas = document.createElement('canvas');
+        const exportCtx = exportCanvas.getContext('2d');
+        
+        // 设置导出Canvas尺寸为原始图像尺寸
+        const originalWidth = canvas.width / (window.devicePixelRatio || 1);
+        const originalHeight = canvas.height / (window.devicePixelRatio || 1);
+        
+        exportCanvas.width = originalWidth;
+        exportCanvas.height = originalHeight;
+        
+        // 绘制当前Canvas内容到导出Canvas
+        exportCtx.drawImage(canvas, 0, 0, originalWidth, originalHeight);
+        
+        // 添加医学信息叠加层
+        addMedicalInfoOverlay(exportCtx, originalWidth, originalHeight);
+        
+        // 转换为Blob并下载
+        exportCanvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            // 生成文件名
+            const patientId = document.getElementById('patient-id-display').textContent || 'Patient';
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const planeNames = { 'axial': '轴位', 'sagittal': '矢状位', 'coronal': '冠状位' };
+            const planeName = planeNames[currentPlane] || '切片';
+            
+            link.download = `${patientId}_${planeName}_切片${currentSlice + 1}_${timestamp}.png`;
+            link.href = url;
+            
+            // 模拟点击下载
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 清理URL对象
+            URL.revokeObjectURL(url);
+            
+            console.log(`截图已保存: ${link.download}`);
+            
+            // 显示成功提示
+            showSaveSuccessToast();
+            
+        }, 'image/png', 0.95);
+        
+    } catch (error) {
+        console.error('保存截图失败:', error);
+        alert('保存截图失败: ' + error.message);
+    }
+}
+
+// 添加医学信息叠加层到导出图像
+function addMedicalInfoOverlay(ctx, width, height) {
+    // 设置文字样式
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.font = '14px Arial, sans-serif';
+    
+    // 准备信息文本
+    const patientId = document.getElementById('patient-id-display').textContent || 'Unknown';
+    const dims = document.getElementById('dimensions-display').textContent || '-';
+    const spacing = document.getElementById('spacing-display').textContent || '-';
+    const planeNames = { 'axial': '轴位', 'sagittal': '矢状位', 'coronal': '冠状位' };
+    const planeName = planeNames[currentPlane] || '切片';
+    const sliceInfo = `${planeName} ${currentSlice + 1}/${getCurrentPlaneDepth()}`;
+    const timestamp = new Date().toLocaleString('zh-CN');
+    
+    const infoLines = [
+        `患者ID: ${patientId}`,
+        `${sliceInfo}`,
+        `维度: ${dims}`,
+        `间距: ${spacing}`,
+        `窗宽/窗位: ${windowWidth}/${windowLevel}`,
+        `导出时间: ${timestamp}`
+    ];
+    
+    // 绘制信息文本（右上角）
+    const lineHeight = 18;
+    const margin = 10;
+    const startY = margin + lineHeight;
+    
+    for (let i = 0; i < infoLines.length; i++) {
+        const y = startY + i * lineHeight;
+        const textWidth = ctx.measureText(infoLines[i]).width;
+        const x = width - textWidth - margin;
+        
+        // 绘制文字描边和填充
+        ctx.strokeText(infoLines[i], x, y);
+        ctx.fillText(infoLines[i], x, y);
+    }
+    
+    // 绘制比例尺（左下角）
+    if (header && header.pixdim && header.pixdim[1]) {
+        const pixelSpacing = header.pixdim[1]; // mm per pixel
+        const scaleLength = 50; // 50mm scale bar
+        const scalePixels = scaleLength / pixelSpacing;
+        
+        const scaleX = margin;
+        const scaleY = height - margin - 20;
+        
+        // 绘制比例尺线条
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(scaleX, scaleY);
+        ctx.lineTo(scaleX + scalePixels, scaleY);
+        ctx.stroke();
+        
+        // 绘制比例尺文字
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial, sans-serif';
+        ctx.fillText(`${scaleLength}mm`, scaleX, scaleY + 15);
+    }
+}
+
+// 显示保存成功提示
+function showSaveSuccessToast() {
+    // 创建提示元素
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateX(100px);
+        transition: all 0.3s ease;
+    `;
+    
+    toast.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>
+        截图已保存到下载文件夹
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // 动画显示
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+function createVolumeRendering(imageData, header) {
+    try {
+        // 获取维度信息
+        const width = header.dim[1];
+        const height = header.dim[2];
+        const depth = header.dim[3];
+        
+        console.log(`创建医学影像体积渲染: ${width}x${height}x${depth}`);
+        
+        // 标准化数据到0-255范围
+        const normalizedData = normalizeImageData(imageData, header);
+        
+        // 创建切片渲染（更可靠的方法）
+        createSliceBasedVisualization(normalizedData, width, height, depth, header);
+        
+        // 添加信息覆盖层
+        addVolumeInfoOverlay(header);
+        
+        console.log('✅ 医学影像可视化创建成功');
+        
+    } catch (error) {
+        console.error('创建体积渲染失败:', error);
+        showError('创建体积渲染失败: ' + error.message);
+        // 回退到演示模式
+        createDemoMedicalVisualization();
+    }
+}
+
+function normalizeImageData(data, header) {
+    // 找到数据的最小值和最大值
+    let min = Infinity;
+    let max = -Infinity;
+    
+    for (let i = 0; i < data.length; i++) {
+        const value = data[i];
+        if (value < min) min = value;
+        if (value > max) max = value;
+    }
+    
+    console.log(`数据范围: ${min} 到 ${max}`);
+    
+    // 标准化到0-255范围
+    const normalized = new Uint8Array(data.length);
+    const range = max - min;
+    
+    if (range > 0) {
+        for (let i = 0; i < data.length; i++) {
+            normalized[i] = Math.floor(((data[i] - min) / range) * 255);
+        }
+    } else {
+        // 所有值相同的情况
+        normalized.fill(128);
+    }
+    
+    return normalized;
+}
+
+function createSliceBasedVisualization(data, width, height, depth, header) {
+    // 创建多个切片平面来显示3D数据
+    const sliceSpacing = Math.max(width, height, depth) / Math.min(depth, 10);
+    
+    for (let z = 0; z < depth; z += Math.max(1, Math.floor(depth / 10))) {
+        // 提取Z切片数据
+        const sliceData = new Uint8Array(width * height);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const index3D = z * width * height + y * width + x;
+                const index2D = y * width + x;
+                sliceData[index2D] = data[index3D] || 0;
+            }
+        }
+        
+        // 创建纹理
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(width, height);
+        
+        // 创建灰度图像
+        for (let i = 0; i < sliceData.length; i++) {
+            const value = sliceData[i];
+            imageData.data[i * 4] = value;     // R
+            imageData.data[i * 4 + 1] = value; // G  
+            imageData.data[i * 4 + 2] = value; // B
+            imageData.data[i * 4 + 3] = 255;   // A
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        
+        // 创建Three.js纹理
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        
+        // 创建半透明平面
+        const planeGeometry = new THREE.PlaneGeometry(width, height);
+        const planeMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.position.z = (z - depth/2) * (depth / 10);
+        
+        scene.add(plane);
+    }
+    
+    // 调整相机
+    const maxDim = Math.max(width, height, depth);
+    camera.position.set(maxDim * 0.8, maxDim * 0.8, maxDim * 1.2);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+}
+
+function addVolumeInfoOverlay(header) {
+    const container = document.getElementById('nifti-viewer');
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(45, 90, 160, 0.95);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        z-index: 100;
+        max-width: 280px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    
+    overlay.innerHTML = `
+        <strong>🔬 真实NIfTI数据</strong><br>
+        <small>
+        维度: ${header.dim[1]}×${header.dim[2]}×${header.dim[3]}<br>
+        数据类型: ${getDataTypeName(header.datatype)}<br>
+        像素间距: ${header.pixdim[1]?.toFixed(2)}mm<br>
+        文件头大小: ${header.sizeof_hdr} bytes
+        </small><br>
+        <em>拖拽旋转 • 滚轮缩放</em>
+    `;
+    container.appendChild(overlay);
+}
+
+function getDataTypeName(datatype) {
+    const types = {
+        2: 'uint8', 4: 'int16', 8: 'int32', 
+        16: 'float32', 64: 'float64'
+    };
+    return types[datatype] || `type-${datatype}`;
+}
+
+
+
+function getVolumeVertexShader() {
+    return `
+        varying vec3 vWorldPosition;
+        varying vec3 vLocalPosition;
+        
+        void main() {
+            vLocalPosition = position + 0.5;
+            vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+}
+
+function getVolumeFragmentShader() {
+    return `
+        uniform sampler3D volumeTexture;
+        uniform float threshold;
+        uniform float opacity;
+        uniform float steps;
+        
+        varying vec3 vWorldPosition;
+        varying vec3 vLocalPosition;
+        
+        void main() {
+            vec3 rayDirection = normalize(vWorldPosition - cameraPosition);
+            vec3 rayStart = vLocalPosition;
+            
+            float stepSize = 1.0 / steps;
+            vec3 step = rayDirection * stepSize;
+            vec3 currentPos = rayStart;
+            
+            vec4 color = vec4(0.0);
+            
+            for (float i = 0.0; i < steps; i++) {
+                if (currentPos.x < 0.0 || currentPos.x > 1.0 ||
+                    currentPos.y < 0.0 || currentPos.y > 1.0 ||
+                    currentPos.z < 0.0 || currentPos.z > 1.0) break;
+                
+                float density = texture(volumeTexture, currentPos).r;
+                
+                if (density > threshold) {
+                    vec3 sampleColor = vec3(density);
+                    float alpha = density * opacity;
+                    
+                    color.rgb += sampleColor * alpha * (1.0 - color.a);
+                    color.a += alpha * (1.0 - color.a);
+                    
+                    if (color.a > 0.95) break;
+                }
+                
+                currentPos += step;
+            }
+            
+            gl_FragColor = color;
+        }
+    `;
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    if (controls) {
+        controls.update();
+    }
+    
+    if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+    }
+}
+
+function resetView() {
+    if (camera && controls) {
+        camera.position.set(300, 300, 300);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+}
+
+function toggleFullscreen() {
+    const container = document.getElementById('nifti-viewer');
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+            console.error('无法进入全屏模式:', err);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function captureScreenshot() {
+    if (renderer) {
+        const link = document.createElement('a');
+        link.download = 'medical_image_screenshot.png';
+        link.href = renderer.domElement.toDataURL();
+        link.click();
+    }
+}
+
+function showError(message) {
+    const container = document.getElementById('nifti-viewer');
+    container.innerHTML = `
+        <div class="viewer-placeholder">
+            <i class="bi bi-exclamation-triangle-fill" style="color: #ff8a95;"></i>
+            <h5>WebGL查看器暂时不可用</h5>
+            <p>${message}</p>
+            <div class="error-message">
+                <i class="bi bi-info-circle"></i>
+                <span>您可以下载文件后使用专业医学影像软件查看</span>
+            </div>
+            <div style="margin-top: 2rem;">
+                <h6 style="color: var(--text-primary); margin-bottom: 1rem;">推荐软件:</h6>
+                <ul style="text-align: left; display: inline-block;">
+                    <li><strong>ITK-SNAP</strong> - 免费医学影像查看器</li>
+                    <li><strong>3D Slicer</strong> - 专业医学影像处理平台</li>
+                    <li><strong>MRIcron</strong> - 轻量级NIfTI查看器</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// 备用的简化查看器
+function initSimpleViewer() {
+    if (viewerInitialized) return;
+    
+    console.log('初始化简化查看器');
+    const container = document.getElementById('nifti-viewer');
+    const imageUrl = '{{ image_url|default:"" }}';
+    const downloadUrl = '{{ patient_info.image.url|default:"#" }}';
+    
+    container.innerHTML = `
+        <div class="viewer-placeholder">
+            <i class="bi bi-file-earmark-medical" style="color: #5ba3e6; font-size: 5rem; margin-bottom: 2rem;"></i>
+            <h5 style="color: #2d5aa0; margin-bottom: 1rem;">NIfTI医学影像文件</h5>
+            <p style="color: #5b7db8; margin-bottom: 2rem;">WebGL 3D查看器暂时不可用</p>
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="${downloadUrl}" download style="
+                    background: linear-gradient(135deg, #87ceeb 0%, #b3d9ff 100%);
+                    border: none;
+                    border-radius: 30px;
+                    padding: 15px 35px;
+                    color: #2d5aa0;
+                    font-weight: 600;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    box-shadow: 0 5px 25px rgba(91, 163, 230, 0.12);
+                ">
+                    <i class="bi bi-download me-2"></i>下载影像文件
+                </a>
+                <button onclick="retryWebGLViewer()" style="
+                    background: linear-gradient(135deg, #90cdf4 0%, #b3d9ff 100%);
+                    border: 2px solid #5ba3e6;
+                    border-radius: 30px;
+                    padding: 13px 30px;
+                    color: #2d5aa0;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    box-shadow: 0 5px 25px rgba(91, 163, 230, 0.08);
+                ">
+                    <i class="bi bi-arrow-clockwise me-2"></i>重试3D查看器
+                </button>
+            </div>
+            <div style="
+                background: linear-gradient(135deg, #fff9e6 0%, #ffeecc 100%);
+                border: 1px solid #ffd93d;
+                border-radius: 12px;
+                color: #cc8800;
+                padding: 1.5rem;
+                margin-top: 2rem;
+                text-align: left;
+            ">
+                <h6 style="color: #cc8800; margin-bottom: 1rem;">
+                    <i class="bi bi-info-circle me-2"></i>推荐查看软件
+                </h6>
+                <ul style="margin: 0; padding-left: 1.5rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>ITK-SNAP</strong> - 免费医学影像分割查看软件</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>3D Slicer</strong> - 专业医学影像处理平台</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>MRIcron</strong> - 轻量级NIfTI查看器</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// 跳过加载，直接使用简化查看器
+function skipToSimpleViewer() {
+    console.log('👆 用户手动跳过加载');
+    if (!viewerInitialized) {
+        initSimpleViewer();
+        viewerInitialized = true;
+    }
+}
+
+// 重试WebGL查看器
+function retryWebGLViewer() {
+    console.log('用户手动重试WebGL查看器');
+    viewerInitialized = false;
+    
+    const container = document.getElementById('nifti-viewer');
+    container.innerHTML = `
+        <div class="viewer-placeholder">
+            <div class="loading-spinner"></div>
+            <h5>重新尝试加载WebGL查看器</h5>
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+            <p>正在重新初始化3D渲染器<span class="pulse-dot">.</span><span class="pulse-dot">.</span><span class="pulse-dot">.</span></p>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        if (window.THREE && window.THREE.OrbitControls && window.nifti) {
+            initNiftiViewer();
+        } else {
+            console.log('库仍未加载，回退到简化查看器');
+            initSimpleViewer();
+            viewerInitialized = true;
+        }
+    }, 1000);
+}
+
+// 监听窗口大小变化
+window.addEventListener('resize', function() {
+    if (canvas && ctx && volumeData) {
+        // 重新渲染以适应新的窗口尺寸
+        setTimeout(() => {
+            renderSlice();
+        }, 100);
+    }
+});
+</script>
+{% endblock %}
