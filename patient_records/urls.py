@@ -21,4 +21,13 @@ urlpatterns = [
     
     # 添加就诊记录
     path('<int:patient_id>/add-record/', views.add_medical_record, name='add_medical_record'),
+    
+    # 超声影像查看器
+    path('ultrasound_viewer/<int:patient_info_id>/', views.ultrasound_viewer, name='ultrasound_viewer'),
+    
+    # 医学影像预览
+    path('image_preview/<int:patient_info_id>/', views.image_preview, name='image_preview'),
+    
+    # 调试视图
+    path('debug/session/', views.debug_session, name='debug_session'),
 ] 

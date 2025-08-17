@@ -11,7 +11,7 @@
     <!-- 页面标题 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="page-title d-flex align-items-center">
-            <i class="bi bi-clipboard2-pulse me-2"></i> 肺炎诊断结果
+            <i class="bi bi-clipboard2-pulse me-2"></i> 盆腹腔诊断结果
             <span class="badge bg-primary ms-2" style="font-size: 0.8rem;">ID: {{ diagnosis.id }}</span>
         </h2>
         <div>
@@ -32,31 +32,61 @@
                 </div>
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        {% if diagnosis.result_type == 'Normal' %}
+                        {% if diagnosis.result_type == 'no_injury' %}
                         <div class="result-icon mb-3 status-normal">
                             <i class="bi bi-emoji-smile"></i>
                         </div>
-                        <h3 class="text-success">无肺炎</h3>
-                        {% elif diagnosis.result_type == 'Mild' %}
-                        <div class="result-icon mb-3 status-warning">
-                            <i class="bi bi-emoji-neutral"></i>
-                        </div>
-                        <h3 class="text-warning">轻度肺炎</h3>
-                        {% else %}
+                        <h3 class="text-success">无外伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.no_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'pelvic_hemorrhage' %}
                         <div class="result-icon mb-3 status-danger">
-                            <i class="bi bi-emoji-frown"></i>
+                            <i class="bi bi-exclamation-triangle"></i>
                         </div>
-                        <h3 class="text-danger">重度肺炎</h3>
+                        <h3 class="text-danger">盆腔出血</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'liver_injury' %}
+                        <div class="result-icon mb-3 status-warning">
+                            <i class="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h3 class="text-warning">肝脏损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.liver_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'spleen_injury' %}
+                        <div class="result-icon mb-3 status-warning">
+                            <i class="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h3 class="text-warning">脾脏损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'right_kidney_injury' %}
+                        <div class="result-icon mb-3 status-info">
+                            <i class="bi bi-info-circle"></i>
+                        </div>
+                        <h3 class="text-info">右肾损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'left_kidney_injury' %}
+                        <div class="result-icon mb-3 status-info">
+                            <i class="bi bi-info-circle"></i>
+                        </div>
+                        <h3 class="text-info">左肾损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'right_adrenal_injury' %}
+                        <div class="result-icon mb-3 status-secondary">
+                            <i class="bi bi-exclamation-diamond"></i>
+                        </div>
+                        <h3 class="text-secondary">右肾上腺损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%</p>
+                        {% elif diagnosis.result_type == 'pancreatic_injury' %}
+                        <div class="result-icon mb-3 status-dark">
+                            <i class="bi bi-exclamation-octagon"></i>
+                        </div>
+                        <h3 class="text-dark">胰腺损伤</h3>
+                        <p class="text-muted">置信度: {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%</p>
+                        {% else %}
+                        <div class="result-icon mb-3 status-normal">
+                            <i class="bi bi-question-circle"></i>
+                        </div>
+                        <h3 class="text-muted">未知类型</h3>
+                        <p class="text-muted">置信度: 0.0%</p>
                         {% endif %}
-                        <p class="text-muted">置信度: 
-                            {% if diagnosis.result_type == 'Normal' %}
-                                {{ diagnosis.get_formatted_probability|default_if_none:"0.0%" }}
-                            {% elif diagnosis.result_type == 'Mild' %}
-                                {{ diagnosis.get_formatted_probability|default_if_none:"0.0%" }}
-                            {% else %}
-                                {{ diagnosis.get_formatted_probability|default_if_none:"0.0%" }}
-                            {% endif %}
-                        </p>
                     </div>
                     
                     <table class="table table-borderless">
@@ -136,47 +166,122 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12">
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
-                                    <span>无肺炎</span>
-                                    <span>{{ diagnosis.normal_probability|floatformat:1 }}%</span>
+                                    <span>无外伤</span>
+                                    <span>{{ diagnosis.no_injury_confidence|floatformat:1 }}%</span>
                                 </div>
-                                <div class="progress" style="height: 25px;">
+                                <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-success" role="progressbar" 
-                                         style="width: {{ diagnosis.normal_probability|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.normal_probability|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.no_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.no_injury_confidence|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.normal_probability|floatformat:1 }}%
+                                        {{ diagnosis.no_injury_confidence|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
-                                    <span>轻度肺炎</span>
-                                    <span>{{ diagnosis.mild_probability|floatformat:1 }}%</span>
+                                    <span>盆腔出血</span>
+                                    <span>{{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%</span>
                                 </div>
-                                <div class="progress" style="height: 25px;">
-                                    <div class="progress-bar bg-warning" role="progressbar" 
-                                         style="width: {{ diagnosis.mild_probability|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.mild_probability|floatformat:1 }}" 
-                                         aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.mild_probability|floatformat:1 }}%
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>重度肺炎</span>
-                                    <span>{{ diagnosis.severe_probability|floatformat:1 }}%</span>
-                                </div>
-                                <div class="progress" style="height: 25px;">
+                                <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-danger" role="progressbar" 
-                                         style="width: {{ diagnosis.severe_probability|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.severe_probability|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.severe_probability|floatformat:1 }}%
+                                        {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>肝脏损伤</span>
+                                    <span>{{ diagnosis.liver_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: {{ diagnosis.liver_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.liver_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.liver_injury_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>脾脏损伤</span>
+                                    <span>{{ diagnosis.spleen_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.spleen_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>右肾损伤</span>
+                                    <span>{{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-info" role="progressbar" 
+                                         style="width: {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>左肾损伤</span>
+                                    <span>{{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-info" role="progressbar" 
+                                         style="width: {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>右肾上腺损伤</span>
+                                    <span>{{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-secondary" role="progressbar" 
+                                         style="width: {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>胰腺损伤</span>
+                                    <span>{{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-dark" role="progressbar" 
+                                         style="width: {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -185,18 +290,18 @@
                 </div>
             </div>
             
-            <!-- CT图像显示 -->
+            <!-- 超声图像显示 -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-image me-2"></i> CT图像</span>
+                    <span><i class="bi bi-image me-2"></i> 超声图像</span>
                 </div>
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        {% if diagnosis.ct_image %}
-                        <img src="{{ diagnosis.ct_image.url }}" alt="CT图像" class="img-fluid rounded" style="max-height: 300px;">
+                        {% if diagnosis.patient.image_path %}
+                        <img src="{{ diagnosis.patient.image_path.url }}" alt="超声图像" class="img-fluid rounded" style="max-height: 300px;">
                         {% else %}
                         <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle me-2"></i> 未上传CT图像
+                            <i class="bi bi-exclamation-triangle me-2"></i> 未上传超声图像
                         </div>
                         {% endif %}
                     </div>
@@ -244,16 +349,40 @@
         background-color: rgba(228, 57, 60, 0.1);
     }
     
+    .status-info {
+        background-color: rgba(13, 202, 240, 0.1);
+    }
+    
+    .status-secondary {
+        background-color: rgba(108, 117, 125, 0.1);
+    }
+    
+    .status-dark {
+        background-color: rgba(33, 37, 41, 0.1);
+    }
+    
     .status-normal i {
-        color: var(--success-color);
+        color: #198754;
     }
     
     .status-warning i {
-        color: var(--warning-color);
+        color: #fd7e14;
     }
     
     .status-danger i {
-        color: var(--danger-color);
+        color: #dc3545;
+    }
+    
+    .status-info i {
+        color: #0dcaf0;
+    }
+    
+    .status-secondary i {
+        color: #6c757d;
+    }
+    
+    .status-dark i {
+        color: #212529;
     }
     
     .progress-bar {
@@ -280,4 +409,4 @@
         }
     }
 </style>
-{% endblock %} 
+{% endblock %}

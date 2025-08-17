@@ -1,15 +1,11 @@
-# 超声影像可视化页面
-def ultrasound_viewer(request):
-    file = request.GET.get('file', '')
-    # 仅传递file参数到模板，实际安全性可根据需求加强
-    return render(request, 'diagnosis/ultrasound_viewer.html', {'file': file})
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from patient_records.models import Patient, ClinicalFeature, Doctor
-from .models import DiagnosisResult
+from patient_records.models import Patient, ClinicalFeature, Doctor, PatientInfo
+from .models import DiagnosisResult, DiagResult
 import os
 import json
 from datetime import datetime, timedelta
@@ -25,6 +21,88 @@ from django.db.models import Q
 # status: 'running', 'completed', 'error'
 # result: 远程执行结果，如果有
 _remote_executions = {}
+
+# Mock诊断函数，用于替代远程模型调用
+def mock_diagnosis(patient_id, image_path):
+    """
+    Mock诊断函数，生成模拟的盆腹腔外伤诊断结果
+    返回8种外伤类型的置信度
+    """
+    import random
+    import time
+    
+    print(f"开始Mock盆腹腔外伤诊断，患者ID: {patient_id}, 图像路径: {image_path}")
+    
+    # 模拟处理时间
+    time.sleep(2)
+    
+    # 生成8种外伤类型的置信度
+    # 0: 无外伤, 1: 腹盆腔积血, 2: 肝脏损伤, 3: 脾脏损伤
+    # 4: 右肾损伤, 5: 左肾损伤, 6: 右肾上腺损伤, 7: 胰腺损伤
+    
+    # 随机选择1-3种可能的外伤类型
+    injury_count = random.randint(0, 3)
+    
+    confidences = {
+        'confidence_0': 0.0,  # 无外伤
+        'confidence_1': 0.0,  # 腹盆腔积血
+        'confidence_2': 0.0,  # 肝脏损伤
+        'confidence_3': 0.0,  # 脾脏损伤
+        'confidence_4': 0.0,  # 右肾损伤
+        'confidence_5': 0.0,  # 左肾损伤
+        'confidence_6': 0.0,  # 右肾上腺损伤
+        'confidence_7': 0.0   # 胰腺损伤
+    }
+    
+    if injury_count == 0:
+        # 无外伤情况
+        confidences['confidence_0'] = random.uniform(0.7, 0.95)
+        # 其他类型分配剩余的小概率
+        remaining = 1.0 - confidences['confidence_0']
+        for i in range(1, 8):
+            confidences[f'confidence_{i}'] = remaining * random.uniform(0.01, 0.2) / 7
+    else:
+        # 有外伤情况
+        confidences['confidence_0'] = random.uniform(0.05, 0.3)
+        
+        # 随机选择受伤的器官
+        injury_types = random.sample(range(1, 8), injury_count)
+        remaining = 1.0 - confidences['confidence_0']
+        
+        # 为选中的外伤类型分配较高置信度
+        for injury_type in injury_types:
+            confidences[f'confidence_{injury_type}'] = remaining * random.uniform(0.2, 0.6) / injury_count
+        
+        # 为未选中的类型分配较低置信度
+        used_confidence = sum(confidences[f'confidence_{i}'] for i in injury_types)
+        remaining_low = remaining - used_confidence
+        
+        for i in range(1, 8):
+            if i not in injury_types:
+                confidences[f'confidence_{i}'] = remaining_low * random.uniform(0.01, 0.1) / (7 - injury_count)
+    
+    # 归一化确保总和为1
+    total = sum(confidences.values())
+    for key in confidences:
+        confidences[key] = confidences[key] / total
+    
+    # 确定主要诊断结果类型
+    max_confidence_key = max(confidences, key=confidences.get)
+    injury_names = {
+        'confidence_0': '无外伤',
+        'confidence_1': '腹盆腔积血',
+        'confidence_2': '肝脏损伤',
+        'confidence_3': '脾脏损伤',
+        'confidence_4': '右肾损伤',
+        'confidence_5': '左肾损伤',
+        'confidence_6': '右肾上腺损伤',
+        'confidence_7': '胰腺损伤'
+    }
+    
+    result_type = injury_names[max_confidence_key]
+    
+    print(f"Mock盆腹腔外伤诊断完成，主要结果: {result_type}, 置信度: {confidences}")
+    return confidences, result_type
 
 # 添加一个等待远程结果的函数
 def wait_for_remote_result(patient_id, timeout=60, polling_interval=1):
@@ -71,56 +149,73 @@ def wait_for_remote_result(patient_id, timeout=60, polling_interval=1):
 def diagnosis_home(request):
     # 获取搜索参数
     search_id = request.GET.get('search_id', '')
-    search_name = request.GET.get('search_name', '')
+    search_image_type = request.GET.get('search_image_type', '')
     search_date = request.GET.get('search_date', '')
     
-    # 初始查询：获取所有患者
-    patients = Patient.objects.all()
+    # 初始查询：获取所有患者图像记录
+    from patient_records.models import PatientInfo
+    patient_images = PatientInfo.objects.all()
     
     # 应用搜索过滤
     if search_id:
-        patients = patients.filter(patient_id=search_id)
+        patient_images = patient_images.filter(patient_id=search_id)
     
-    if search_name:
-        patients = patients.filter(name__icontains=search_name)
+    if search_image_type:
+        patient_images = patient_images.filter(image_style__icontains=search_image_type)
     
     if search_date:
         # 按创建日期过滤
         try:
             from datetime import datetime
             search_date_obj = datetime.strptime(search_date, '%Y-%m-%d').date()
-            patients = patients.filter(created_at__date=search_date_obj)
+            patient_images = patient_images.filter(created_at__date=search_date_obj)
         except (ValueError, TypeError):
             # 如果日期格式不正确，忽略该过滤条件
             pass
     
-    # 按创建时间倒序排序，并限制最多显示10条记录
-    patients = patients.order_by('-created_at')[:10]
+    # 按创建时间倒序排序，并限制最多显示20条记录
+    patient_images = patient_images.order_by('-created_at')[:20]
     
     return render(request, 'diagnosis/diagnosis_home.html', {
-        'patients': patients,
+        'patient_images': patient_images,
         'search_id': search_id,
-        'search_name': search_name,
+        'search_image_type': search_image_type,
         'search_date': search_date
     })
 
 # 上传CT图像视图
 def upload_ct(request, patient_id=None):
-    """上传CT图像页面"""
+    """基于PatientInfo的诊断页面"""
     try:
         if patient_id:
-            # 获取特定患者信息
-            patient = get_object_or_404(Patient, patient_id=patient_id)
+            # 获取该患者ID的PatientInfo记录，优先获取超声图像
+            from patient_records.models import PatientInfo
+            patient_images = PatientInfo.objects.filter(patient_id=patient_id).order_by('-created_at')
             
-            # 获取患者的临床特征
+            if not patient_images.exists():
+                messages.error(request, f"未找到患者ID {patient_id} 的图像记录")
+                return redirect('diagnosis:home')
+            
+            # 获取最新的PatientInfo记录作为主要参考
+            patient_info = patient_images.first()
+            
+            # 尝试获取对应的Patient记录（如果存在）
             try:
-                clinical_features = ClinicalFeature.objects.get(patient=patient)
-            except ClinicalFeature.DoesNotExist:
+                patient = Patient.objects.get(patient_id=patient_id)
+                # 获取患者的临床特征
+                try:
+                    clinical_features = ClinicalFeature.objects.get(patient=patient)
+                except ClinicalFeature.DoesNotExist:
+                    clinical_features = None
+            except Patient.DoesNotExist:
+                patient = None
                 clinical_features = None
                 
             context = {
-                'patient': patient,
-                'clinical_features': clinical_features,
+                'patient_info': patient_info,
+                'patient_images': patient_images,
+                'patient': patient,  # 可能为None
+                'clinical_features': clinical_features,  # 可能为None
             }
             
             return render(request, 'diagnosis/upload_ct.html', context)
@@ -153,9 +248,17 @@ def run_remote_model(temp_image_path=None, patient=None, clinical_features=None,
         if patient is None and form_data:
             patient_id = form_data.get('patient')
             try:
-                patient = Patient.objects.get(patient_id=patient_id)
-                clinical_features = patient.clinical_features
-            except:
+                # 优先从PatientInfo获取患者信息
+                patient_info = PatientInfo.objects.get(patient_id=patient_id)
+                patient = patient_info  # 使用PatientInfo作为patient对象
+                
+                # 尝试获取临床特征（如果Patient表中有对应记录）
+                try:
+                    patient_record = Patient.objects.get(patient_id=patient_id)
+                    clinical_features = patient_record.clinical_features
+                except Patient.DoesNotExist:
+                    clinical_features = None
+            except PatientInfo.DoesNotExist:
                 print(f"无法获取患者信息，ID: {patient_id}")
                 return None
         
@@ -535,20 +638,36 @@ def process_ct(request):
             
             # 使用事务创建诊断结果记录
             with transaction.atomic():
-                # 再次检查最近的诊断记录（可能在等待期间由其他请求创建）
-                recent_check = check_recent_diagnosis(patient_id, 10)
-                if recent_check:
-                    print(f"发现患者 {patient_id} 在等待期间创建的诊断记录（ID: {recent_check.id}），直接返回")
+                # 检查最近的DiagResult诊断记录
+                from django.utils import timezone
+                import pytz
+                
+                # 获取当前时间（带时区）
+                current_time = timezone.now()
+                time_threshold = current_time - timedelta(seconds=10)
+                
+                recent_diag_result = DiagResult.objects.filter(
+                    patient_id=patient_id,
+                    created_at__gte=time_threshold
+                ).first()
+                
+                if recent_diag_result:
+                    print(f"发现患者 {patient_id} 的最近DiagResult记录（ID: {recent_diag_result.id}），直接返回")
                     return JsonResponse({
                         'success': True,
-                        'diagnosis_id': recent_check.id,
+                        'diagnosis_id': recent_diag_result.id,
                         'message': '使用等待期间创建的诊断结果',
-                        'result_type': recent_check.result_type,
-                        'confidence': recent_check.confidence * 100,
-                        'probabilities': {
-                            'normal': recent_check.probability_normal * 100,
-                            'mild': recent_check.probability_mild * 100,
-                            'severe': recent_check.probability_severe * 100
+                        'result_type': recent_diag_result.result_type,
+                        'confidence': max_confidence * 100,
+                        'confidences': {
+                            'confidence_0': recent_diag_result.confidence_0 * 100,
+                            'confidence_1': recent_diag_result.confidence_1 * 100,
+                            'confidence_2': recent_diag_result.confidence_2 * 100,
+                            'confidence_3': recent_diag_result.confidence_3 * 100,
+                            'confidence_4': recent_diag_result.confidence_4 * 100,
+                            'confidence_5': recent_diag_result.confidence_5 * 100,
+                            'confidence_6': recent_diag_result.confidence_6 * 100,
+                            'confidence_7': recent_diag_result.confidence_7 * 100
                         }
                     })
                 
@@ -624,7 +743,7 @@ def process_ct(request):
 # 诊断结果视图
 def diagnosis_result(request, diagnosis_id):
     # 获取诊断结果记录
-    diagnosis = get_object_or_404(DiagnosisResult, id=diagnosis_id)
+    diagnosis = get_object_or_404(DiagResult, id=diagnosis_id)
     
     return render(request, 'diagnosis/diagnosis_result.html', {
         'diagnosis': diagnosis,
@@ -638,7 +757,7 @@ def diagnosis_history(request):
     date_range = request.GET.get('date_range', '')
     
     # 初始查询：获取所有诊断记录
-    diagnosis_results = DiagnosisResult.objects.all()
+    diagnosis_results = DiagResult.objects.all()
     
     # 应用搜索过滤
     if search_query:
@@ -674,16 +793,18 @@ def diagnosis_history(request):
     
     # 统计各类型诊断结果的数量
     total_count = diagnosis_results.count()
-    normal_count = diagnosis_results.filter(result_type='Normal').count()
-    mild_count = diagnosis_results.filter(result_type='Mild').count()
-    severe_count = diagnosis_results.filter(result_type='Severe').count()
+    normal_count = diagnosis_results.filter(result_type='无外伤').count()
+    abdominal_bleeding_count = diagnosis_results.filter(result_type='腹盆腔积血').count()
+    liver_injury_count = diagnosis_results.filter(result_type='肝脏损伤').count()
+    spleen_injury_count = diagnosis_results.filter(result_type='脾脏损伤').count()
     
     return render(request, 'diagnosis/diagnosis_history.html', {
         'diagnosis_results': diagnosis_results,
         'total_count': total_count,
         'normal_count': normal_count,
-        'mild_count': mild_count,
-        'severe_count': severe_count,
+        'abdominal_bleeding_count': abdominal_bleeding_count,
+        'liver_injury_count': liver_injury_count,
+        'spleen_injury_count': spleen_injury_count,
         'search_query': search_query,
         'result_type': result_type,
         'date_range': date_range
@@ -765,13 +886,35 @@ def ajax_diagnose(request):
                     'message': '使用现有的诊断结果'
                 })
             
-            # 获取患者信息
+            # 获取PatientInfo中的患者信息和图像信息
             try:
-                patient = Patient.objects.get(patient_id=patient_id)
-                clinical_features = patient.clinical_features
-            except Patient.DoesNotExist:
-                print(f"找不到ID为{patient_id}的患者")
-                return JsonResponse({'success': False, 'error': f'找不到ID为{patient_id}的患者'})
+                patient_info = PatientInfo.objects.get(patient_id=patient_id)
+                if not patient_info.image:
+                    return JsonResponse({'success': False, 'error': f'患者{patient_id}没有关联的医学图像'})
+                
+                # 检查图像类型，只支持US超声诊断
+                if patient_info.image_style != 'US':
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'当前仅支持US超声诊断，患者图像类型为: {patient_info.image_style}'
+                    })
+                
+                image_path = patient_info.image.path
+                print(f"使用PatientInfo中的图像: {image_path}")
+                
+                # 尝试获取临床特征（如果Patient表中有对应记录）
+                clinical_features = None
+                try:
+                    patient = Patient.objects.get(patient_id=patient_id)
+                    clinical_features = patient.clinical_features
+                    print(f"找到患者{patient_id}的临床特征信息")
+                except Patient.DoesNotExist:
+                    print(f"患者{patient_id}在Patient表中不存在，将使用默认临床特征")
+                    clinical_features = None
+                    
+            except PatientInfo.DoesNotExist:
+                print(f"找不到ID为{patient_id}的患者图像信息")
+                return JsonResponse({'success': False, 'error': f'找不到ID为{patient_id}的患者图像信息'})
             except Exception as e:
                 print(f"获取患者数据失败: {str(e)}")
                 return JsonResponse({'success': False, 'error': f'获取患者数据失败: {str(e)}'})
@@ -786,7 +929,20 @@ def ajax_diagnose(request):
                 # 如果已有已完成的结果且不超过10分钟，直接使用缓存的结果
                 if status == 'completed' and cached_result is not None and (current_time - timestamp).total_seconds() < 600:
                     print(f"患者 {patient_id} 已有缓存的远程执行结果，将直接使用")
-                    probabilities = cached_result
+                    
+                    # 检查cached_result的类型，如果是tuple则转换为字典
+                    if isinstance(cached_result, tuple) and len(cached_result) >= 3:
+                        probabilities = {
+                            'normal': cached_result[0],
+                            'mild': cached_result[1], 
+                            'severe': cached_result[2]
+                        }
+                    elif isinstance(cached_result, dict):
+                        probabilities = cached_result
+                    else:
+                        print(f"缓存结果格式不正确: {type(cached_result)}, 值: {cached_result}")
+                        # 使用mock数据
+                        probabilities = mock_diagnosis(patient_id, patient_info.image.path if patient_info.image else None)
                     
                     # 确定最大概率所对应的类型
                     max_prob_type = max(probabilities, key=probabilities.get)
@@ -821,7 +977,7 @@ def ajax_diagnose(request):
                         
                         # 创建诊断结果
                         diagnosis_result = DiagnosisResult.objects.create(
-                            patient=patient,
+                            patient=patient_info,
                             result_type=result_type,
                             confidence=max_prob,
                             probability_normal=probabilities['normal'],
@@ -863,41 +1019,41 @@ def ajax_diagnose(request):
                             'status': 'timeout'
                         })
             
-            # 如果没有获取到结果，或者没有正在执行的任务，启动新的远程执行
+            # 如果没有获取到结果，或者没有正在执行的任务，启动新的Mock诊断
             if 'probabilities' not in locals() or probabilities is None:
-                print(f"为患者 {patient_id} 启动新的远程执行")
+                print(f"为患者 {patient_id} 启动Mock诊断")
                 
                 # 标记执行状态为running
                 _remote_executions[patient_id] = (current_time, 'running', None)
                 
-                # 执行远程模型并等待结果
-                probabilities = run_remote_model(None, patient, clinical_features, None, False)
-                
-                # 如果仍然没有结果，再等待一次
-                if probabilities is None:
-                    print(f"首次执行未获取结果，再次等待患者 {patient_id} 的远程执行结果...")
-                    probabilities = wait_for_remote_result(patient_id, timeout=90, polling_interval=3)
-                
-                # 最终验证是否有结果
-                if probabilities is None:
-                    print(f"多次尝试后仍未获取到患者 {patient_id} 的远程执行结果，返回错误")
+                # 使用Mock诊断替代远程模型调用
+                try:
+                    confidences, result_type = mock_diagnosis(patient_id, image_path)
+                    
+                    # 更新执行状态为完成
+                    _remote_executions[patient_id] = (current_time, 'completed', (confidences, result_type))
+                    
+                except Exception as e:
+                    print(f"Mock诊断执行失败: {str(e)}")
+                    _remote_executions[patient_id] = (current_time, 'error', None)
                     return JsonResponse({
                         'success': False,
-                        'message': '无法获取远程执行结果，请稍后重试',
+                        'message': f'诊断执行失败: {str(e)}',
+                        'status': 'failed'
+                    })
+                
+                # 最终验证是否有结果
+                if 'confidences' not in locals() or confidences is None:
+                    print(f"Mock诊断未返回有效结果")
+                    return JsonResponse({
+                        'success': False,
+                        'message': '诊断未返回有效结果，请稍后重试',
                         'status': 'failed'
                     })
             
-            # 确定最大概率所对应的类型
-            max_prob_type = max(probabilities, key=probabilities.get)
-            max_prob = probabilities[max_prob_type]
-            
-            # 映射回前端使用的类型
-            result_type_map = {
-                'normal': 'Normal',
-                'mild': 'Mild',
-                'severe': 'Severe'
-            }
-            result_type = result_type_map[max_prob_type]
+            # 确定最大置信度
+            max_confidence_key = max(confidences, key=confidences.get)
+            max_confidence = confidences[max_confidence_key]
             
             # 使用事务创建诊断结果记录
             with transaction.atomic():
@@ -918,14 +1074,6 @@ def ajax_diagnose(request):
                         }
                     })
                 
-                # 创建诊断结果记录，使用真实的远程执行结果
-                # 添加用户身份调试信息
-                print(f"当前用户: {request.user}, 是否匿名: {request.user.is_anonymous}")
-                if not request.user.is_anonymous:
-                    print(f"用户ID: {request.user.id}, 用户名: {request.user.username}")
-                    if hasattr(request.user, 'doctor'):
-                        print(f"关联的医生ID: {request.user.doctor.doctor_id}")
-                
                 # 获取当前登录的医生信息
                 doctor = None
                 if not request.user.is_anonymous and hasattr(request.user, 'doctor'):
@@ -945,31 +1093,40 @@ def ajax_diagnose(request):
                         doctor = get_object_or_404(Doctor, doctor_id=1)
                         print(f"使用默认医生，ID: 1")
                 
-                # 创建诊断结果
-                diagnosis_result = DiagnosisResult.objects.create(
-                    patient=patient,
+                # 创建DiagResult诊断结果
+                diag_result = DiagResult.objects.create(
+                    patient=patient_info,
                     result_type=result_type,
-                    confidence=max_prob,
-                    probability_normal=probabilities['normal'],
-                    probability_mild=probabilities['mild'],
-                    probability_severe=probabilities['severe'],
-                    notes=data.get('notes', ''),
+                    confidence_0=confidences['confidence_0'],
+                    confidence_1=confidences['confidence_1'],
+                    confidence_2=confidences['confidence_2'],
+                    confidence_3=confidences['confidence_3'],
+                    confidence_4=confidences['confidence_4'],
+                    confidence_5=confidences['confidence_5'],
+                    confidence_6=confidences['confidence_6'],
+                    confidence_7=confidences['confidence_7'],
+                    image=patient_info.image,
                     created_by=doctor
                 )
                 
-                print(f"成功创建患者 {patient_id} 的诊断结果记录，ID: {diagnosis_result.id}")
+                print(f"成功创建患者 {patient_id} 的DiagResult记录，ID: {diag_result.id}")
                 
                 return JsonResponse({
                     'success': True,
-                    'diagnosis_id': diagnosis_result.id,
+                    'diagnosis_id': diag_result.id,
                     'result_type': result_type,
-                    'confidence': max_prob * 100,
-                    'probabilities': {
-                        'normal': probabilities['normal'] * 100,
-                        'mild': probabilities['mild'] * 100,
-                        'severe': probabilities['severe'] * 100
+                    'confidence': max_confidence * 100,
+                    'confidences': {
+                        'confidence_0': confidences['confidence_0'] * 100,
+                        'confidence_1': confidences['confidence_1'] * 100,
+                        'confidence_2': confidences['confidence_2'] * 100,
+                        'confidence_3': confidences['confidence_3'] * 100,
+                        'confidence_4': confidences['confidence_4'] * 100,
+                        'confidence_5': confidences['confidence_5'] * 100,
+                        'confidence_6': confidences['confidence_6'] * 100,
+                        'confidence_7': confidences['confidence_7'] * 100
                     },
-                    'message': '诊断完成'
+                    'message': '盆腹腔外伤诊断完成'
                 })
 
         except Exception as e:
@@ -1024,3 +1181,128 @@ def diagnosis_database(request):
     诊断数据库页面视图，仅渲染前端模板
     """
     return render(request, 'diagnosis/diagnosis_database.html')
+
+def upload_patient_images(request):
+    """上传患者图像页面和处理逻辑"""
+    if request.method == 'POST':
+        try:
+            # 处理文件上传
+            uploaded_files = request.FILES.getlist('images')
+            image_type = request.POST.get('image_type', 'CT')
+            
+            if not uploaded_files:
+                messages.error(request, '请选择要上传的图像文件')
+                return redirect('diagnosis:upload_patient_images')
+            
+            from patient_records.models import PatientInfo
+            from django.db import transaction
+            
+            # 获取当前登录的医生
+            doctor_id = request.session.get('doctor_id')
+            if not doctor_id:
+                messages.error(request, '请先登录')
+                return redirect('login')
+            
+            doctor = get_object_or_404(Doctor, doctor_id=doctor_id)
+            
+            success_count = 0
+            error_files = []
+            
+            with transaction.atomic():
+                for uploaded_file in uploaded_files:
+                    try:
+                        # 检查文件格式
+                        if not uploaded_file.name.lower().endswith('.nii.gz'):
+                            error_files.append(f"{uploaded_file.name}: 不支持的文件格式，只支持.nii.gz格式")
+                            continue
+                        
+                        # 从文件名中提取患者ID
+                        file_name = uploaded_file.name
+                        patient_id = extract_patient_id_from_filename(file_name)
+                        
+                        if not patient_id:
+                            error_files.append(f"{uploaded_file.name}: 无法从文件名中提取患者ID")
+                            continue
+                        
+                        # 确定存储路径
+                        import os
+                        from django.conf import settings
+                        
+                        # 获取图像类型对应的文件夹
+                        type_folder_map = {
+                            'US': 'US',
+                            'CT': 'CT', 
+                            'MRI': 'MRI',
+                            'X-ray': 'X-ray'
+                        }
+                        folder_name = type_folder_map.get(image_type, 'CT')
+                        
+                        # 创建目标目录
+                        upload_dir = os.path.join('data', 'upload', folder_name)
+                        full_upload_dir = os.path.join(settings.BASE_DIR, upload_dir)
+                        os.makedirs(full_upload_dir, exist_ok=True)
+                        
+                        # 构建文件路径
+                        file_path = os.path.join(upload_dir, uploaded_file.name)
+                        full_file_path = os.path.join(full_upload_dir, uploaded_file.name)
+                        
+                        # 保存文件到指定目录
+                        with open(full_file_path, 'wb+') as destination:
+                            for chunk in uploaded_file.chunks():
+                                destination.write(chunk)
+                        
+                        # 创建PatientInfo记录
+                        patient_info = PatientInfo.objects.create(
+                            patient_id=patient_id,
+                            image_style=image_type,
+                            image=file_path,
+                            created_by=doctor
+                        )
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_files.append(f"{uploaded_file.name}: {str(e)}")
+                        continue
+            
+            # 显示结果消息
+            if success_count > 0:
+                messages.success(request, f'成功上传 {success_count} 个图像文件')
+            
+            if error_files:
+                for error in error_files:
+                    messages.error(request, error)
+            
+            return redirect('diagnosis:upload_patient_images')
+            
+        except Exception as e:
+            messages.error(request, f'上传过程中发生错误: {str(e)}')
+            return redirect('diagnosis:upload_patient_images')
+    
+    # GET请求，显示上传页面
+    return render(request, 'diagnosis/upload_patient_images.html')
+
+def extract_patient_id_from_filename(filename):
+    """从文件名中提取患者ID"""
+    import re
+    
+    # 移除文件扩展名
+    name_without_ext = filename.replace('.nii.gz', '')
+    
+    # 尝试多种模式提取患者ID
+    patterns = [
+        r'patient[_-]?(\d+)',  # patient_123, patient-123, patient123
+        r'(\d+)',              # 直接的数字
+        r'ID[_-]?(\d+)',       # ID_123, ID-123, ID123
+        r'P(\d+)',             # P123
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, name_without_ext, re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1))
+            except (ValueError, IndexError):
+                continue
+    
+    return None

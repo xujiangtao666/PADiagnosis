@@ -8,7 +8,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 import re
-from .models import Patient, Doctor, ClinicalFeature
+from .models import Patient, Doctor, ClinicalFeature, PatientInfo
 import os
 import csv
 import logging
@@ -962,4 +962,84 @@ def reset_password(request):
             logger.error(f"重置密码时出错: {str(e)}", exc_info=True)
             messages.error(request, '密码重置失败，请稍后再试')
     
-    return render(request, 'reset_password.html') 
+    return render(request, 'reset_password.html')
+
+# 超声影像查看器
+@login_required_custom
+def ultrasound_viewer(request, patient_info_id):
+    """超声影像查看器"""
+    try:
+        # 获取PatientInfo记录 - 使用主键查找
+        patient_info = get_object_or_404(PatientInfo, pk=patient_info_id)
+        
+        # 记录访问日志
+        logger.info(f"用户 {request.session.get('doctor_id')} 访问患者影像 {patient_info_id}")
+        
+        context = {
+            'patient_info': patient_info,
+            'patient_info_id': patient_info_id,  # 添加这个用于URL生成
+            'patient_id': patient_info.patient_id,
+            'image_style': patient_info.image_style,
+            'image_path': patient_info.image.name if patient_info.image else None,
+        }
+        
+        return render(request, 'patient_records/ultrasound_viewer.html', context)
+        
+    except Exception as e:
+        logger.error(f"查看影像时出错: {str(e)}", exc_info=True)
+        messages.error(request, f'查看影像时出错: {str(e)}')
+        return redirect('patient_records:patient_list')
+
+# 医学影像预览视图
+@login_required_custom
+def image_preview(request, patient_info_id):
+    """医学影像预览视图"""
+    try:
+        # 获取PatientInfo记录
+        patient_info = get_object_or_404(PatientInfo, pk=patient_info_id)
+        
+        # 检查是否有影像文件
+        if not patient_info.image:
+            messages.warning(request, '该记录没有关联的影像文件')
+            return redirect('patient_records:ultrasound_viewer', patient_info_id=patient_info_id)
+        
+        # 记录访问日志
+        logger.info(f"用户 {request.session.get('doctor_id')} 预览患者影像 {patient_info_id}")
+        
+        # 获取影像文件信息
+        image_path = patient_info.image.path if patient_info.image else None
+        image_url = patient_info.image.url if patient_info.image else None
+        
+        context = {
+            'patient_info': patient_info,
+            'patient_info_id': patient_info_id,  # 添加这个用于URL生成
+            'patient_id': patient_info.patient_id,
+            'image_style': patient_info.image_style,
+            'image_path': image_path,
+            'image_url': image_url,
+            'file_size': os.path.getsize(image_path) if image_path and os.path.exists(image_path) else None,
+        }
+        
+        # Debug log
+        logger.debug(f"Context for image_preview: patient_info_id={patient_info_id}, patient_id={patient_info.patient_id}")
+        
+        return render(request, 'patient_records/image_preview.html', context)
+        
+    except Exception as e:
+        logger.error(f"预览影像时出错: {str(e)}", exc_info=True)
+        messages.error(request, f'预览影像时出错: {str(e)}')
+        return redirect('patient_records:patient_list')
+
+# 调试视图 - 检查登录状态
+def debug_session(request):
+    """调试会话信息"""
+    debug_info = {
+        'session_doctor_id': request.session.get('doctor_id'),
+        'session_doctor_name': request.session.get('doctor_name'),
+        'session_keys': list(request.session.keys()),
+        'user_authenticated': request.user.is_authenticated if hasattr(request, 'user') else False,
+        'session_age': request.session.get_expiry_age(),
+        'session_cookie_age': settings.SESSION_COOKIE_AGE,
+    }
+    
+    return JsonResponse(debug_info)
