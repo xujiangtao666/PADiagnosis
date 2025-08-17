@@ -107,6 +107,64 @@
             opacity: 1;
         }
     }
+
+    /* ---------------------- 自定义全选框样式 ---------------------- */
+    #select-all {
+        /* 取消默认样式 */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border: 1px solid #ced4da; /* Bootstrap 默认边框颜色 */
+        border-radius: 4px; /* Bootstrap 默认圆角 */
+        position: relative;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+    }
+
+    /* 未选状态（空心） */
+    #select-all:not(:checked):not(:indeterminate) {
+        background-color: #fff;
+    }
+
+    /* 全选状态（实心蓝色+对勾） */
+    #select-all:checked {
+        background-color: #0d6efd; /* Bootstrap  primary 颜色 */
+        border-color: #0d6efd;
+    }
+
+    /* 全选状态的对勾（使用 Bootstrap Icons） */
+    #select-all:checked::after {
+        content: ""; 
+        font-family: "Bootstrap Icons";
+        font-size: 12px;
+        color: #fff;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* 部分选中状态（非实心蓝色） */
+    #select-all:indeterminate {
+        border-color: #0d6efd; /* 蓝色边框 */
+        background-color: #fff; /* 白色背景 */
+    }
+
+    /* 部分选中状态的蓝色小方块（非实心） */
+    #select-all:indeterminate::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        background-color: #0d6efd; /* 蓝色填充 */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 2px; /* 轻微圆角 */
+    }
+    /* -------------------------------------------------------------- */
 </style>
 {% endblock %}
 
@@ -149,12 +207,21 @@
     <div class="card table-card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="bi bi-list-ul me-2"></i> 患者医学图像列表</span>
+            <!-- 批量操作栏（初始隐藏） -->
+            <div class="batch-actions ms-auto" style="display: none;">
+                <button type="button" class="btn btn-danger btn-sm batch-delete-btn">
+                    <i class="bi bi-trash me-1"></i> 批量删除
+                </button>
+            </div>
             <span class="badge bg-info">共 {{ patients|length }} 条记录</span>
         </div>
         <div class="card-body table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
+                         <th style="width: 50px; text-align: center;">
+                            <input type="checkbox" id="select-all" class="form-check-input" />
+                        </th>
                         <th>患者ID</th>
                         <th>图像类别</th>
                         <th>图像预览</th>
@@ -167,6 +234,9 @@
                     {% if patients %}
                     {% for patient in patients %}
                     <tr>
+                        <td style="text-align: center;">
+                            <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ patient.patient_id }}" /> <!-- 注意：用模型主键（id）更可靠 -->
+                        </td>
                         <td><span class="badge bg-light text-dark">{{ patient.patient_id }}</span></td>
                         <td>
                             <span class="badge bg-primary">{{ patient.image_style }}</span>
@@ -199,7 +269,7 @@
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <div class="empty-state">
                                 <i class="bi bi-inbox-fill"></i>
                                 <p>暂无患者医学图像记录</p>
@@ -251,6 +321,25 @@
     </div>
 </div>
 
+<!-- 批量删除确认模态框 -->
+<div class="modal fade" id="batchDeleteModal" tabindex="-1" aria-labelledby="batchDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="batchDeleteModalLabel">确认批量删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除选中的 <span id="selectedCount">0</span> 条记录吗？此操作不可恢复。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmBatchDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 通知提示 -->
 <div class="notification success" style="display: none;">
     <i class="bi bi-check-circle"></i>
@@ -269,8 +358,109 @@
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+
+        // 全选/行选复选框逻辑
+        const selectAll = document.getElementById('select-all'); // 全选框
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox'); // 所有行选框
+        const batchActions = document.querySelector('.batch-actions'); // 批量操作栏
+
+        function updateSelectAllState() {
+            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked); // 是否全选
+            const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked); // 是否有选中
+
+            if (allChecked) {
+                // 全选：实心蓝色
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else if (anyChecked) {
+                // 部分选中：非实心蓝色（indeterminate）
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            } else {
+                // 未选：空心
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        // 全选框：同步所有行选框状态
+        selectAll.addEventListener('change', function() {
+            rowCheckboxes.forEach(cb => cb.checked = this.checked);
+            updateBatchActions(); // 更新批量操作栏显示状态
+            selectAll.indeterminate = false; // 点击全选框后，取消 indeterminate 状态
+        });
+
+        // 行选框：同步全选框状态，并更新批量操作栏
+        rowCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                //selectAll.checked = Array.from(rowCheckboxes).every(el => el.checked); // 全选框状态 
+                updateSelectAllState(); // 更新全选框状态
+                updateBatchActions(); // 更新批量操作栏显示状态
+            });
+        });
+
+        // 函数：根据行选框状态显示/隐藏批量操作栏
+        function updateBatchActions() {
+            const hasSelected = Array.from(rowCheckboxes).some(cb => cb.checked);
+            batchActions.style.display = hasSelected ? 'block' : 'none';
+        }
+
+        // 初始化全选框状态
+        updateSelectAllState(); // 页面加载时初始化
+
+        // 批量删除逻辑
+        const batchDeleteBtn = document.querySelector('.batch-delete-btn'); // 批量删除按钮
+        const batchDeleteModal = new bootstrap.Modal(document.getElementById('batchDeleteModal')); // 批量删除模态框
+        const selectedCountSpan = document.getElementById('selectedCount'); // 选中数量显示
+        let selectedIds = []; // 存储选中的记录ID
+
+        // 点击批量删除按钮：收集选中的ID，显示模态框
+        batchDeleteBtn.addEventListener('click', function() {
+            selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked'))
+                .map(cb => cb.dataset.id); // 收集选中的ID（用模型主键更可靠）
+
+            if (selectedIds.length === 0) {
+                alert('请先选中要删除的记录');
+                return;
+            }
+
+            selectedCountSpan.textContent = selectedIds.length; // 更新模态框中的选中数量
+            batchDeleteModal.show(); // 显示模态框
+        });
+
+        // 确认批量删除：发送POST请求到后端
+        document.getElementById('confirmBatchDelete').addEventListener('click', function() {
+            fetch('{% url 'patient_records:batch_delete' %}', { // 后端批量删除接口URL（需修改为你的实际路由）
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Django CSRF令牌（必传）
+                },
+                body: JSON.stringify({ ids: selectedIds }) // 传递选中的ID列表
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 删除成功：刷新页面（或局部更新表格）
+                    location.reload();
+                    // 显示成功通知（可保留原通知逻辑）
+                    const notification = document.querySelector('.notification.success');
+                    notification.style.display = 'block';
+                    setTimeout(() => notification.style.display = 'none', 3000); // 3秒后隐藏
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('删除失败：', error);
+                alert('删除失败，请重试');
+            })
+            .finally(() => {
+                batchDeleteModal.hide(); // 隐藏模态框
+            });
+        });
         
-        // 删除按钮处理
+        // 删除单条按钮处理
         const deleteButtons = document.querySelectorAll('.delete-btn');
         const confirmDelete = document.getElementById('confirmDelete');
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
