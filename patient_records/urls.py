@@ -16,8 +16,11 @@ urlpatterns = [
     # 编辑病历
     path('<int:patient_id>/edit/', views.patient_edit, name='patient_edit'),
     
-    # 删除病历
+    # 删除单条病例
     path('<int:patient_id>/delete/', views.patient_delete, name='patient_delete'),
+
+    # 批量删除病例（新增）
+    path('batch-delete/', views.batch_delete, name='batch_delete'),
     
     # 添加就诊记录
     path('<int:patient_id>/add-record/', views.add_medical_record, name='add_medical_record'),

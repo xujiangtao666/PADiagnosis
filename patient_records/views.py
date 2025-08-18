@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.views.decorators.csrf import csrf_exempt
 import re
 from .models import Patient, Doctor, ClinicalFeature, PatientInfo
 import os
@@ -445,12 +446,34 @@ def patient_edit(request, patient_id):
         'patient': patient
     })
 
-# 删除病历
+# 删除病例
 @login_required_custom
 def patient_delete(request, patient_id):
-    patient = get_object_or_404(Patient, patient_id=patient_id)
+    patient = get_object_or_404(PatientInfo, patient_id=patient_id)
     patient.delete()
     return redirect('patient_records:patient_list')
+
+# 批量删除病例
+@csrf_exempt  # 允许跨域请求（或使用CSRF令牌验证）
+@login_required_custom
+def batch_delete(request):
+    if request.method == 'POST':
+        import json
+        try:
+            data = json.loads(request.body)
+            ids = data.get('ids', [])  # 获取选中的ID列表
+
+            if not ids:
+                return JsonResponse({'success': False, 'message': '未选中任何记录'})
+
+            # 删除选中的记录（用模型主键过滤）
+            PatientInfo.objects.filter(patient_id__in=ids).delete()
+
+            return JsonResponse({'success': True, 'message': '批量删除成功'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'删除失败：{str(e)}'})
+    else:
+        return JsonResponse({'success': False, 'message': '仅支持POST请求'})
 
 # 添加就诊记录
 def add_medical_record(request, patient_id):
