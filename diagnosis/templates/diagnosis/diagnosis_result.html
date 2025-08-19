@@ -40,61 +40,69 @@
                     <div class="text-center mb-4">
                         {% load diagnosis_extras %}
                         {% get_max_confidence_info diagnosis as max_info %}
-                        
-                        {% if max_info.index == 0 %}
-                        <div class="result-icon mb-3 status-normal">
-                            <i class="bi bi-emoji-smile"></i>
-                        </div>
-                        <h3 class="text-success">无外伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 1 %}
+                        {% comment %} 支持多标签：优先显示 positives（置信度>50%）列表，否则显示 primary {% endcomment %}
+                        {% if max_info.positives and max_info.positives|length > 0 %}
                         <div class="result-icon mb-3 status-danger">
                             <i class="bi bi-exclamation-triangle"></i>
                         </div>
-                        <h3 class="text-danger">腹盆腔或腹膜后积血/血肿</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 2 %}
+                        <h3 class="text-danger">{% for p in max_info.positives %}{{ p.label }}{% if not forloop.last %}  {% endif %}{% endfor %}</h3>
+                        {% else %}
+                        {% comment %} 回退到 primary 显示（原有风格） {% endcomment %}
+                        {% if max_info.primary.index == 0 %}
+                        <div class="result-icon mb-3 status-normal">
+                            <i class="bi bi-emoji-smile"></i>
+                        </div>
+                        <h3 class="text-success">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 1 %}
+                        <div class="result-icon mb-3 status-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <h3 class="text-danger">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 2 %}
                         <div class="result-icon mb-3 status-warning">
                             <i class="bi bi-exclamation-circle"></i>
                         </div>
-                        <h3 class="text-warning">肝脏损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 3 %}
+                        <h3 class="text-warning">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 3 %}
                         <div class="result-icon mb-3 status-warning">
                             <i class="bi bi-exclamation-circle"></i>
                         </div>
-                        <h3 class="text-warning">脾脏损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 4 %}
+                        <h3 class="text-warning">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 4 %}
                         <div class="result-icon mb-3 status-info">
                             <i class="bi bi-info-circle"></i>
                         </div>
-                        <h3 class="text-info">右肾损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 5 %}
+                        <h3 class="text-info">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 5 %}
                         <div class="result-icon mb-3 status-info">
                             <i class="bi bi-info-circle"></i>
                         </div>
-                        <h3 class="text-info">左肾损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 6 %}
+                        <h3 class="text-info">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 6 %}
                         <div class="result-icon mb-3 status-secondary">
                             <i class="bi bi-exclamation-diamond"></i>
                         </div>
-                        <h3 class="text-secondary">右肾上腺损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
-                        {% elif max_info.index == 7 %}
+                        <h3 class="text-secondary">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.primary.index == 7 %}
                         <div class="result-icon mb-3 status-dark">
                             <i class="bi bi-exclamation-octagon"></i>
                         </div>
-                        <h3 class="text-dark">胰腺损伤</h3>
-                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        <h3 class="text-dark">{{ max_info.primary.label }}</h3>
+                        <p class="text-muted">置信度: {{ max_info.primary.confidence|floatformat:1 }}%</p>
                         {% else %}
                         <div class="result-icon mb-3 status-normal">
                             <i class="bi bi-question-circle"></i>
                         </div>
                         <h3 class="text-muted">未知类型</h3>
                         <p class="text-muted">置信度: 0.0%</p>
+                        {% endif %}
                         {% endif %}
                     </div>
                     
@@ -178,14 +186,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>无外伤</span>
-                                    <span>{{ diagnosis.confidence_0|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_0|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-success" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_0|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_0|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_0|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_0|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_0|floatformat:1 }}%
+                                        {{ diagnosis.confidence_0|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -193,14 +201,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>腹盆腔或腹膜后积血/血肿</span>
-                                    <span>{{ diagnosis.confidence_1|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_1|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-danger" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_1|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_1|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_1|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_1|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_1|floatformat:1 }}%
+                                        {{ diagnosis.confidence_1|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -208,14 +216,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>肝脏损伤</span>
-                                    <span>{{ diagnosis.confidence_2|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_2|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-warning" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_2|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_2|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_2|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_2|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_2|floatformat:1 }}%
+                                        {{ diagnosis.confidence_2|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -223,14 +231,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>脾脏损伤</span>
-                                    <span>{{ diagnosis.confidence_3|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_3|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-warning" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_3|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_3|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_3|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_3|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_3|floatformat:1 }}%
+                                        {{ diagnosis.confidence_3|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -238,14 +246,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>右肾损伤</span>
-                                    <span>{{ diagnosis.confidence_4|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_4|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-info" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_4|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_4|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_4|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_4|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_4|floatformat:1 }}%
+                                        {{ diagnosis.confidence_4|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -253,14 +261,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>左肾损伤</span>
-                                    <span>{{ diagnosis.confidence_5|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_5|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-info" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_5|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_5|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_5|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_5|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_5|floatformat:1 }}%
+                                        {{ diagnosis.confidence_5|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -268,14 +276,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>右肾上腺损伤</span>
-                                    <span>{{ diagnosis.confidence_6|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_6|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-secondary" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_6|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_6|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_6|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_6|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_6|floatformat:1 }}%
+                                        {{ diagnosis.confidence_6|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -283,14 +291,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>胰腺损伤</span>
-                                    <span>{{ diagnosis.confidence_7|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_7|to_percent|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-dark" role="progressbar" 
-                                         style="width: {{ diagnosis.confidence_7|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.confidence_7|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_7|to_percent|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_7|to_percent|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.confidence_7|floatformat:1 }}%
+                                        {{ diagnosis.confidence_7|to_percent|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>

@@ -32,7 +32,7 @@ def real_model_diagnosis(patient_id, image_path):
     """
     try:
         # 添加MedCoss_inference目录到Python路径
-        medcoss_path = '/home/cm/code/PADiagnosis/MedCoss_inference'
+        medcoss_path = 'H:\Projects_code\VSCodeProjects\PADiagnosis\MedCoss_inference'
         if medcoss_path not in sys.path:
             sys.path.insert(0, medcoss_path)
         
@@ -88,7 +88,21 @@ def real_model_diagnosis(patient_id, image_path):
                 confidences[f'confidence_{i}'] = 0.0
         
         # 确定主要诊断结果类型
-        max_confidence_key = max(confidences, key=confidences.get)
+        # max_confidence_key = max(confidences, key=confidences.get)
+        # injury_names = {
+        #     'confidence_0': '无外伤',
+        #     'confidence_1': '腹盆腔积血',
+        #     'confidence_2': '肝脏损伤',
+        #     'confidence_3': '脾脏损伤',
+        #     'confidence_4': '右肾损伤',
+        #     'confidence_5': '左肾损伤',
+        #     'confidence_6': '右肾上腺损伤',
+        #     'confidence_7': '胰腺损伤'
+        # }
+        
+        # result_type = injury_names[max_confidence_key]
+        
+        # injury 名称映射
         injury_names = {
             'confidence_0': '无外伤',
             'confidence_1': '腹盆腔积血',
@@ -99,9 +113,19 @@ def real_model_diagnosis(patient_id, image_path):
             'confidence_6': '右肾上腺损伤',
             'confidence_7': '胰腺损伤'
         }
-        
-        result_type = injury_names[max_confidence_key]
-        
+
+        # 多标签判定：置信度 > 0.5 的都视为存在
+        threshold = 0.5
+        positive_types = [injury_names[k] for k in confidences.keys() if k.startswith('confidence_') and confidences[k] > threshold]
+
+        if not positive_types:
+            # 没有超过阈值的，就取最大置信度的单一标签
+            max_confidence_key = max(confidences, key=confidences.get)
+            positive_types = [injury_names[max_confidence_key]]
+
+        # 用逗号分隔保存为字符串，兼容现有 result_type 字段
+        result_type = ','.join(positive_types)
+
         print(f"MedCoss模型推理完成，患者{patient_id}的诊断结果: {result_type}, 置信度: {confidences}")
         
         # 添加数据来源标识
