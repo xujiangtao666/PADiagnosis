@@ -15,6 +15,8 @@ import paramiko  # 用于SSH连接
 import base64
 import socket
 from django.db.models import Q
+import sys
+import numpy as np
 
 # 添加一个全局变量，用于跟踪正在进行的远程命令执行
 # 格式: {patient_id: (timestamp, status, result)}
@@ -22,19 +24,112 @@ from django.db.models import Q
 # result: 远程执行结果，如果有
 _remote_executions = {}
 
-# Mock诊断函数，用于替代远程模型调用
-def mock_diagnosis(patient_id, image_path):
+# 真实模型诊断函数
+def real_model_diagnosis(patient_id, image_path):
     """
-    Mock诊断函数，生成模拟的盆腹腔外伤诊断结果
+    使用MedCoss_inference模型进行真实的盆腹腔外伤诊断
+    返回8种外伤类型的置信度
+    """
+    try:
+        # 添加MedCoss_inference目录到Python路径
+        medcoss_path = '/home/cm/code/PADiagnosis/MedCoss_inference'
+        if medcoss_path not in sys.path:
+            sys.path.insert(0, medcoss_path)
+        
+        # 导入MedCoss推理函数
+        from inference_single_case import inference_single_case
+        
+        # 检查图像文件是否存在
+        if not os.path.exists(image_path):
+            print(f"图像文件不存在: {image_path}")
+            return mock_diagnosis_fallback(patient_id, image_path)
+        
+        # 调用MedCoss模型进行推理
+        print(f"正在使用MedCoss模型对患者{patient_id}的图像进行推理: {image_path}")
+        
+        # 设置模型参数
+        model_weights = os.path.join(medcoss_path, 'pth', 'checkpoint.pth')  # 假设权重文件路径
+        if not os.path.exists(model_weights):
+            # 如果权重文件不存在，查找其他可能的权重文件
+            weights_dir = os.path.join(medcoss_path, 'weights')
+            if os.path.exists(weights_dir):
+                weight_files = [f for f in os.listdir(weights_dir) if f.endswith('.pth')]
+                if weight_files:
+                    model_weights = os.path.join(weights_dir, weight_files[0])
+                    print(f"使用找到的权重文件: {model_weights}")
+                else:
+                    print("未找到模型权重文件，使用mock数据")
+                    return mock_diagnosis_fallback(patient_id, image_path)
+            else:
+                print("权重目录不存在，使用mock数据")
+                return mock_diagnosis_fallback(patient_id, image_path)
+        
+        # 调用推理函数
+        probs = inference_single_case(
+            nifti_path=image_path,
+            checkpoint_path=model_weights,
+            input_size=(64, 192, 192),  # 根据模型要求调整
+            num_classes=8  # 8种外伤类型
+        )
+        
+        # 确保probs是numpy数组或列表
+        if isinstance(probs, np.ndarray):
+            # probs的形状是(1, num_classes)，需要取第一个元素
+            probs_list = probs[0].tolist()
+        else:
+            probs_list = probs
+        
+        # 构建置信度字典，与原有格式保持一致
+        confidences = {}
+        for i in range(8):
+            if i < len(probs_list):
+                confidences[f'confidence_{i}'] = float(probs_list[i])
+            else:
+                confidences[f'confidence_{i}'] = 0.0
+        
+        # 确定主要诊断结果类型
+        max_confidence_key = max(confidences, key=confidences.get)
+        injury_names = {
+            'confidence_0': '无外伤',
+            'confidence_1': '腹盆腔积血',
+            'confidence_2': '肝脏损伤',
+            'confidence_3': '脾脏损伤',
+            'confidence_4': '右肾损伤',
+            'confidence_5': '左肾损伤',
+            'confidence_6': '右肾上腺损伤',
+            'confidence_7': '胰腺损伤'
+        }
+        
+        result_type = injury_names[max_confidence_key]
+        
+        print(f"MedCoss模型推理完成，患者{patient_id}的诊断结果: {result_type}, 置信度: {confidences}")
+        
+        # 添加数据来源标识
+        confidences['data_source'] = 'model'
+        confidences['data_source_label'] = 'AI模型推理结果'
+        
+        return confidences, result_type
+        
+    except Exception as e:
+        print(f"MedCoss模型推理失败，患者{patient_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # 如果模型推理失败，回退到mock数据
+        return mock_diagnosis_fallback(patient_id, image_path)
+
+# Mock诊断函数，用于替代远程模型调用（作为fallback）
+def mock_diagnosis_fallback(patient_id, image_path):
+    """
+    Mock诊断函数，生成模拟的盆腹腔外伤诊断结果（作为fallback）
     返回8种外伤类型的置信度
     """
     import random
     import time
     
-    print(f"开始Mock盆腹腔外伤诊断，患者ID: {patient_id}, 图像路径: {image_path}")
+    print(f"开始Mock盆腹腔外伤诊断（fallback），患者ID: {patient_id}, 图像路径: {image_path}")
     
     # 模拟处理时间
-    time.sleep(2)
+    time.sleep(1)
     
     # 生成8种外伤类型的置信度
     # 0: 无外伤, 1: 腹盆腔积血, 2: 肝脏损伤, 3: 脾脏损伤
@@ -101,8 +196,24 @@ def mock_diagnosis(patient_id, image_path):
     
     result_type = injury_names[max_confidence_key]
     
-    print(f"Mock盆腹腔外伤诊断完成，主要结果: {result_type}, 置信度: {confidences}")
+    print(f"Mock盆腹腔外伤诊断完成（fallback），主要结果: {result_type}, 置信度: {confidences}")
+    
+    # 添加数据来源标识
+    confidences['data_source'] = 'mock'
+    confidences['data_source_label'] = '模拟数据（仅供演示）'
+    
     return confidences, result_type
+
+# 主诊断函数，优先使用真实模型
+def mock_diagnosis(patient_id, image_path):
+    """
+    主诊断函数，优先使用MedCoss真实模型，失败时回退到mock数据
+    返回8种外伤类型的置信度
+    """
+    print(f"开始诊断，患者ID: {patient_id}, 图像路径: {image_path}")
+    
+    # 优先尝试使用真实模型
+    return real_model_diagnosis(patient_id, image_path)
 
 # 添加一个等待远程结果的函数
 def wait_for_remote_result(patient_id, timeout=60, polling_interval=1):
@@ -901,16 +1012,6 @@ def ajax_diagnose(request):
                 
                 image_path = patient_info.image.path
                 print(f"使用PatientInfo中的图像: {image_path}")
-                
-                # 尝试获取临床特征（如果Patient表中有对应记录）
-                clinical_features = None
-                try:
-                    patient = Patient.objects.get(patient_id=patient_id)
-                    clinical_features = patient.clinical_features
-                    print(f"找到患者{patient_id}的临床特征信息")
-                except Patient.DoesNotExist:
-                    print(f"患者{patient_id}在Patient表中不存在，将使用默认临床特征")
-                    clinical_features = None
                     
             except PatientInfo.DoesNotExist:
                 print(f"找不到ID为{patient_id}的患者图像信息")
@@ -1051,8 +1152,9 @@ def ajax_diagnose(request):
                         'status': 'failed'
                     })
             
-            # 确定最大置信度
-            max_confidence_key = max(confidences, key=confidences.get)
+            # 确定最大置信度（只考虑confidence_开头的键）
+            confidence_keys = [k for k in confidences.keys() if k.startswith('confidence_')]
+            max_confidence_key = max(confidence_keys, key=lambda k: confidences[k])
             max_confidence = confidences[max_confidence_key]
             
             # 使用事务创建诊断结果记录
@@ -1106,6 +1208,8 @@ def ajax_diagnose(request):
                     confidence_6=confidences['confidence_6'],
                     confidence_7=confidences['confidence_7'],
                     image=patient_info.image,
+                    data_source=confidences.get('data_source', 'unknown'),
+                    data_source_label=confidences.get('data_source_label', '未知数据源'),
                     created_by=doctor
                 )
                 
@@ -1126,6 +1230,8 @@ def ajax_diagnose(request):
                         'confidence_6': confidences['confidence_6'] * 100,
                         'confidence_7': confidences['confidence_7'] * 100
                     },
+                    'data_source': confidences.get('data_source', 'unknown'),
+                    'data_source_label': confidences.get('data_source_label', '未知数据源'),
                     'message': '盆腹腔外伤诊断完成'
                 })
 

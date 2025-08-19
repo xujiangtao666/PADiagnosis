@@ -19,6 +19,10 @@ class DiagResult(models.Model):
 
     # 医学图像存储路径
     image = models.ImageField(upload_to='ct_images/%Y/%m/%d/', verbose_name='CT图像')
+    
+    # 数据来源标识
+    data_source = models.CharField(max_length=20, default='unknown', verbose_name='数据来源')
+    data_source_label = models.CharField(max_length=50, default='未知数据源', verbose_name='数据来源标签')
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='诊断时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
@@ -102,5 +106,5 @@ class DiagnosisResult(models.Model):
     def severe_probability(self):
         """返回重度肺炎概率的百分比形式（0-100）"""
 
-        return self.probability_severe * 100 
+        return self.probability_severe * 100
 

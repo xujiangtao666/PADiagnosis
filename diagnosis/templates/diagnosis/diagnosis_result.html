@@ -13,6 +13,12 @@
         <h2 class="page-title d-flex align-items-center">
             <i class="bi bi-clipboard2-pulse me-2"></i> 盆腹腔诊断结果
             <span class="badge bg-primary ms-2" style="font-size: 0.8rem;">ID: {{ diagnosis.id }}</span>
+            {% if diagnosis.data_source %}
+            <span class="badge {% if diagnosis.data_source == 'model' %}bg-success{% else %}bg-warning{% endif %} ms-2" style="font-size: 0.8rem;">
+                <i class="bi bi-{% if diagnosis.data_source == 'model' %}cpu{% else %}gear{% endif %} me-1"></i>
+                {{ diagnosis.data_source_label }}
+            </span>
+            {% endif %}
         </h2>
         <div>
             <a href="{% url 'diagnosis:diagnosis_history' %}" class="btn btn-outline-secondary">
@@ -32,54 +38,57 @@
                 </div>
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        {% if diagnosis.result_type == 'no_injury' %}
+                        {% load diagnosis_extras %}
+                        {% get_max_confidence_info diagnosis as max_info %}
+                        
+                        {% if max_info.index == 0 %}
                         <div class="result-icon mb-3 status-normal">
                             <i class="bi bi-emoji-smile"></i>
                         </div>
                         <h3 class="text-success">无外伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.no_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'pelvic_hemorrhage' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 1 %}
                         <div class="result-icon mb-3 status-danger">
                             <i class="bi bi-exclamation-triangle"></i>
                         </div>
-                        <h3 class="text-danger">盆腔出血</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'liver_injury' %}
+                        <h3 class="text-danger">腹盆腔或腹膜后积血/血肿</h3>
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 2 %}
                         <div class="result-icon mb-3 status-warning">
                             <i class="bi bi-exclamation-circle"></i>
                         </div>
                         <h3 class="text-warning">肝脏损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.liver_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'spleen_injury' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 3 %}
                         <div class="result-icon mb-3 status-warning">
                             <i class="bi bi-exclamation-circle"></i>
                         </div>
                         <h3 class="text-warning">脾脏损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'right_kidney_injury' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 4 %}
                         <div class="result-icon mb-3 status-info">
                             <i class="bi bi-info-circle"></i>
                         </div>
                         <h3 class="text-info">右肾损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'left_kidney_injury' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 5 %}
                         <div class="result-icon mb-3 status-info">
                             <i class="bi bi-info-circle"></i>
                         </div>
                         <h3 class="text-info">左肾损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'right_adrenal_injury' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 6 %}
                         <div class="result-icon mb-3 status-secondary">
                             <i class="bi bi-exclamation-diamond"></i>
                         </div>
                         <h3 class="text-secondary">右肾上腺损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%</p>
-                        {% elif diagnosis.result_type == 'pancreatic_injury' %}
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
+                        {% elif max_info.index == 7 %}
                         <div class="result-icon mb-3 status-dark">
                             <i class="bi bi-exclamation-octagon"></i>
                         </div>
                         <h3 class="text-dark">胰腺损伤</h3>
-                        <p class="text-muted">置信度: {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%</p>
+                        <p class="text-muted">置信度: {{ max_info.confidence|floatformat:1 }}%</p>
                         {% else %}
                         <div class="result-icon mb-3 status-normal">
                             <i class="bi bi-question-circle"></i>
@@ -169,29 +178,29 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>无外伤</span>
-                                    <span>{{ diagnosis.no_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_0|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-success" role="progressbar" 
-                                         style="width: {{ diagnosis.no_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.no_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_0|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_0|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.no_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_0|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
-                                    <span>盆腔出血</span>
-                                    <span>{{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%</span>
+                                    <span>腹盆腔或腹膜后积血/血肿</span>
+                                    <span>{{ diagnosis.confidence_1|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-danger" role="progressbar" 
-                                         style="width: {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_1|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_1|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.pelvic_hemorrhage_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_1|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -199,14 +208,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>肝脏损伤</span>
-                                    <span>{{ diagnosis.liver_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_2|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-warning" role="progressbar" 
-                                         style="width: {{ diagnosis.liver_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.liver_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_2|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_2|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.liver_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_2|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -214,14 +223,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>脾脏损伤</span>
-                                    <span>{{ diagnosis.spleen_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_3|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-warning" role="progressbar" 
-                                         style="width: {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.spleen_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_3|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_3|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.spleen_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_3|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -229,14 +238,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>右肾损伤</span>
-                                    <span>{{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_4|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-info" role="progressbar" 
-                                         style="width: {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_4|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_4|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.right_kidney_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_4|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -244,14 +253,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>左肾损伤</span>
-                                    <span>{{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_5|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-info" role="progressbar" 
-                                         style="width: {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_5|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_5|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.left_kidney_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_5|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -259,14 +268,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>右肾上腺损伤</span>
-                                    <span>{{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_6|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-secondary" role="progressbar" 
-                                         style="width: {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_6|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_6|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.right_adrenal_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_6|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>
@@ -274,14 +283,14 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>胰腺损伤</span>
-                                    <span>{{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%</span>
+                                    <span>{{ diagnosis.confidence_7|floatformat:1 }}%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-dark" role="progressbar" 
-                                         style="width: {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%" 
-                                         aria-valuenow="{{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}" 
+                                         style="width: {{ diagnosis.confidence_7|floatformat:1 }}%" 
+                                         aria-valuenow="{{ diagnosis.confidence_7|floatformat:1 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ diagnosis.pancreatic_injury_confidence|floatformat:1 }}%
+                                        {{ diagnosis.confidence_7|floatformat:1 }}%
                                     </div>
                                 </div>
                             </div>

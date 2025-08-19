@@ -210,7 +210,8 @@
                         </div>
                         
                         <div class="diagnosis-summary p-3 bg-light rounded">
-                            <p class="mb-0"><strong>综合诊断结果：</strong><span id="final-diagnosis">诊断中...</span></p>
+                            <p class="mb-2"><strong>综合诊断结果：</strong><span id="final-diagnosis">诊断中...</span></p>
+                            <p class="mb-0"><strong>数据来源：</strong><span id="page-data-source" class="badge bg-secondary ms-2">诊断中...</span></p>
                         </div>
                                     </div>
                                 </div>
@@ -342,7 +343,8 @@
                     </div>
                     
                     <div class="diagnosis-summary p-3 bg-light rounded mb-3">
-                        <p class="mb-0"><strong>综合诊断结果：</strong><span id="modal-final-diagnosis">诊断中...</span></p>
+                        <p class="mb-2"><strong>综合诊断结果：</strong><span id="modal-final-diagnosis">诊断中...</span></p>
+                        <p class="mb-0"><strong>数据来源：</strong><span id="modal-data-source" class="badge bg-secondary ms-2">诊断中...</span></p>
                     </div>
                 </div>
             </div>
@@ -598,6 +600,24 @@
                          if (finalDiagnosis) {
                              const maxPercentage = Math.round(maxConfidence);
                              finalDiagnosis.textContent = `${injuryNames[maxIndex]} (置信度: ${maxPercentage}%)`;
+                         }
+                         
+                         // 显示数据来源标识
+                         const dataSourceLabel = response.data_source_label || '未知数据源';
+                         const dataSource = response.data_source || 'unknown';
+                         
+                         // 更新模态框中的数据来源显示
+                         const modalDataSource = document.getElementById('modal-data-source');
+                         if (modalDataSource) {
+                             modalDataSource.innerHTML = `<i class="bi bi-${dataSource === 'model' ? 'cpu' : 'gear'} me-1"></i> ${dataSourceLabel}`;
+                             modalDataSource.className = `badge ${dataSource === 'model' ? 'bg-success' : 'bg-warning'} ms-2`;
+                         }
+                         
+                         // 更新页面上的数据来源显示
+                         const pageDataSource = document.getElementById('page-data-source');
+                         if (pageDataSource) {
+                             pageDataSource.innerHTML = `<i class="bi bi-${dataSource === 'model' ? 'cpu' : 'gear'} me-1"></i> ${dataSourceLabel}`;
+                             pageDataSource.className = `badge ${dataSource === 'model' ? 'bg-success' : 'bg-warning'} ms-2`;
                          }
                         
                         // 显示模态框
